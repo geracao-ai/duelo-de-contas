@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#4aa8ff">
+  <meta name="description" content="Duelo de Contas: o cabo de guerra da matemática para crianças de 6 a 10 anos.">
+  <title>Duelo de Contas</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23ffd23f'/%3E%3Ctext x='50' y='66' font-size='54' text-anchor='middle' font-family='sans-serif' font-weight='900' fill='%233b2a20'%3E%2B%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="stage" aria-hidden="true"></canvas>
+  <div id="live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  <button id="btn-mute" class="btn btn-icon btn-mute" type="button" aria-label="Desligar o som" aria-pressed="false">Som</button>
+
+  <main id="app">
+    <!-- Menu -->
+    <section id="screen-menu" class="screen" aria-labelledby="menu-title">
+      <h1 id="menu-title" class="logo">Duelo <span>de</span> Contas</h1>
+      <p class="tagline">O cabo de guerra da matemática!</p>
+      <div class="stack">
+        <button class="btn btn-green btn-xl" type="button" data-action="play-cpu" aria-label="Jogar contra o computador">Contra o computador</button>
+        <button class="btn btn-blue btn-xl" type="button" data-action="play-2p" aria-label="Jogar com dois jogadores">2 jogadores</button>
+        <button class="btn btn-yellow btn-xl" type="button" data-action="stats" aria-label="Ver estatísticas">Estatísticas</button>
+      </div>
+    </section>
+
+    <!-- Configuração -->
+    <section id="screen-setup" class="screen" aria-labelledby="setup-title" hidden>
+      <div class="card setup-card">
+        <h2 id="setup-title">Prepare o duelo</h2>
+
+        <div class="field">
+          <h3 id="lbl-mode">Modo</h3>
+          <div class="chips" role="radiogroup" aria-labelledby="lbl-mode" id="opt-mode">
+            <button class="chip" type="button" role="radio" data-value="cpu">Contra o computador</button>
+            <button class="chip" type="button" role="radio" data-value="2p">2 jogadores</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <h3 id="lbl-ops">Operações <small>(escolha uma ou mais)</small></h3>
+          <div class="chips" role="group" aria-labelledby="lbl-ops" id="opt-ops">
+            <button class="chip chip-op" type="button" data-value="add" aria-label="Soma" aria-pressed="false">+</button>
+            <button class="chip chip-op" type="button" data-value="sub" aria-label="Subtração" aria-pressed="false">−</button>
+            <button class="chip chip-op" type="button" data-value="mul" aria-label="Multiplicação" aria-pressed="false">×</button>
+            <button class="chip chip-op" type="button" data-value="div" aria-label="Divisão" aria-pressed="false">÷</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <h3 id="lbl-diff">Dificuldade</h3>
+          <div class="chips" role="radiogroup" aria-labelledby="lbl-diff" id="opt-diff">
+            <button class="chip" type="button" role="radio" data-value="facil">Fácil</button>
+            <button class="chip" type="button" role="radio" data-value="medio">Médio</button>
+            <button class="chip" type="button" role="radio" data-value="dificil">Difícil</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <h3 id="lbl-p1">Jogador 1: escolha seu bichinho</h3>
+          <div class="cards" id="cards-p1" role="group" aria-labelledby="lbl-p1"></div>
+        </div>
+
+        <div class="field" id="field-p2">
+          <h3 id="lbl-p2">Jogador 2: escolha seu bichinho</h3>
+          <div class="cards" id="cards-p2" role="group" aria-labelledby="lbl-p2"></div>
+        </div>
+        <p class="hint" id="cpu-hint">O computador escolhe um bichinho diferente do seu, sorteado na hora.</p>
+
+        <div class="row">
+          <button class="btn btn-gray" type="button" data-action="menu" aria-label="Voltar ao menu">Voltar</button>
+          <button class="btn btn-green btn-lg" type="button" data-action="start" aria-label="Começar a partida">Começar!</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Partida -->
+    <section id="screen-match" class="screen match" hidden aria-label="Partida">
+      <div class="hud">
+        <div class="hud-group">
+          <button class="btn btn-yellow btn-small" type="button" id="btn-pause" aria-label="Pausar o jogo">Pausa</button>
+          <button class="btn btn-gray btn-small" type="button" id="btn-mute-hud" aria-label="Desligar o som" aria-pressed="false">Som</button>
+        </div>
+        <button class="btn btn-red btn-small" type="button" id="btn-quit" aria-label="Sair da partida">Sair</button>
+      </div>
+      <div class="panels" id="panels"></div>
+    </section>
+
+    <!-- Resultado -->
+    <section id="screen-result" class="screen result" hidden aria-labelledby="result-title">
+      <div class="card result-card">
+        <h2 id="result-title"></h2>
+        <div class="table-wrap">
+          <table class="result-table">
+            <caption class="sr-only">Resumo da partida</caption>
+            <thead><tr><th scope="col">Jogador</th><th scope="col">Acertos</th><th scope="col">Erros</th><th scope="col">Tempo médio</th></tr></thead>
+            <tbody id="result-rows"></tbody>
+          </table>
+        </div>
+        <div class="row">
+          <button class="btn btn-green btn-lg" type="button" data-action="again" aria-label="Jogar de novo">Jogar de novo</button>
+          <button class="btn btn-blue" type="button" data-action="menu" aria-label="Voltar ao menu">Menu</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Estatísticas -->
+    <section id="screen-stats" class="screen" hidden aria-labelledby="stats-title">
+      <div class="card stats-card">
+        <h2 id="stats-title">Suas estatísticas</h2>
+        <div class="tiles" id="stats-tiles"></div>
+        <h3>Acertos por operação</h3>
+        <div id="stats-ops" class="op-bars"></div>
+        <div class="row">
+          <button class="btn btn-gray" type="button" data-action="menu" aria-label="Voltar ao menu">Voltar</button>
+          <button class="btn btn-red" type="button" data-action="reset-stats" aria-label="Zerar estatísticas">Zerar estatísticas</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Diálogo (pausa, sair, confirmar) -->
+  <div id="dialog" class="overlay" hidden>
+    <div class="card dialog-card" role="dialog" aria-modal="true" aria-labelledby="dialog-title" aria-describedby="dialog-text">
+      <h2 id="dialog-title"></h2>
+      <p id="dialog-text"></p>
+      <div class="row" id="dialog-buttons"></div>
+    </div>
+  </div>
+
+  <!-- Aviso de orientação -->
+  <div id="rotate-hint" class="rotate-hint" role="note" hidden>
+    <span class="phone-icon" aria-hidden="true"></span>
+    <span>Vire o celular para jogar melhor!</span>
+    <button class="btn btn-small btn-gray" type="button" id="btn-rotate-ok" aria-label="Fechar aviso">Entendi</button>
+  </div>
+
+  <noscript><p class="noscript">Ative o JavaScript para jogar o Duelo de Contas.</p></noscript>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

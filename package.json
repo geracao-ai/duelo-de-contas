@@ -1,0 +1,11 @@
+{
+  "name": "duelo-de-contas",
+  "version": "1.0.0",
+  "description": "Cabo de guerra da matemática para crianças de 6 a 10 anos.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  }
+}
