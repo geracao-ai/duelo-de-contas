@@ -4,6 +4,12 @@ Cabo de guerra da matemática para crianças de 6 a 10 anos. Resolva as contas m
 
 Feito só com HTML, Canvas e JavaScript puro (módulos ES), sem build, sem dependências, sem imagens e sem fontes externas: os bichinhos são desenhados no canvas e os sons são sintetizados com WebAudio. Toda a interface é em português do Brasil.
 
+**▶ Jogue agora: https://geracao-ai.github.io/duelo-de-contas/**
+
+[![Demonstração do Duelo de Contas: o celular liga, vira para paisagem, abre o jogo e a Pandinha vence o Sapinho](assets/demo.gif)](https://geracao-ai.github.io/duelo-de-contas/assets/demo.mp4)
+
+<sub>Clique na animação para ver o [vídeo em MP4](https://geracao-ai.github.io/duelo-de-contas/assets/demo.mp4) com qualidade total.</sub>
+
 ## Como jogar
 
 1. No menu, escolha **Contra o computador** ou **2 jogadores**.
@@ -69,12 +75,27 @@ js/audio.js         efeitos e melodia sintetizados com WebAudio, botão de mudo
 js/stats.js         estatísticas e preferências no localStorage
 js/keypad.js        teclado numérico na tela
 tests/              testes com node:test
+assets/             vídeo de demonstração, prévia animada e imagem de compartilhamento
+tools/              scripts que geram o vídeo (tools/demo) e a imagem (tools/og)
 .github/workflows/  publicação no GitHub Pages
 ```
 
 ## Publicação
 
 O workflow `.github/workflows/pages.yml` roda os testes e publica a raiz do repositório no GitHub Pages a cada push na branch `main`. Ative em *Settings → Pages → Source: GitHub Actions*.
+
+## Vídeo e imagem de compartilhamento
+
+- `assets/demo.mp4` / `assets/demo.gif`: vídeo de demonstração (~27 s) e a prévia animada usada acima. Gerados por `tools/demo/record-demo.mjs`, que grava `tools/demo/director.html` (um celular desenhado em HTML com o jogo de verdade rodando dentro).
+- `assets/og-image.png`: miniatura 1200×630 que aparece ao compartilhar o link (WhatsApp, Telegram, redes sociais), referenciada pelas meta tags Open Graph do `index.html`. Gerada por `tools/og/render-og.mjs` a partir de `tools/og/og.html`, usando o mesmo desenho do jogo.
+
+Para regenerar (precisa de Playwright e ffmpeg):
+
+```bash
+python3 -m http.server 8000 &
+node tools/og/render-og.mjs
+node tools/demo/record-demo.mjs
+```
 
 ## Acessibilidade
 

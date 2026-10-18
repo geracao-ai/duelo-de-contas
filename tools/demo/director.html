@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Cena do vídeo de demonstração (1280×720)</title>
+  <style>
+    :root {
+      --font: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+      --ease: cubic-bezier(0.65, 0, 0.35, 1);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; width: 1280px; height: 720px; overflow: hidden;
+      background: #000; font-family: var(--font); color: #fff;
+    }
+
+    /* "Câmera": tudo que aparece no vídeo, menos o jogo em tela cheia e o texto final. */
+    #camera {
+      position: absolute; inset: 0;
+      display: grid; place-items: center;
+      background: radial-gradient(ellipse at 50% 45%, #2a2440 0%, #0b0a12 70%);
+      transform-origin: 50% 50%;
+      transition: transform 1.2s var(--ease), opacity 0.5s ease;
+    }
+
+    /* ---------- celular ---------- */
+    #phone {
+      position: relative; padding: 14px; border-radius: 52px;
+      background: linear-gradient(145deg, #3b3b46, #15151b);
+      box-shadow: 0 0 0 2px #55556a, 0 30px 80px rgba(0, 0, 0, 0.6);
+      transition: transform 0.9s var(--ease);
+    }
+    #phone.no-anim { transition: none; }
+    .screen {
+      position: relative; overflow: hidden; border-radius: 38px; background: #000;
+      width: 360px; height: 640px;
+    }
+    #phone.landscape .screen { width: 640px; height: 360px; }
+    .notch {
+      position: absolute; z-index: 5; background: #000; border-radius: 99px;
+      top: 12px; left: 50%; width: 92px; height: 26px; transform: translateX(-50%);
+    }
+    #phone.landscape .notch {
+      top: 50%; left: 12px; width: 26px; height: 92px; transform: translateY(-50%);
+    }
+
+    /* Tela ligada / desligada */
+    .screen-content { position: absolute; inset: 0; opacity: 0; transition: opacity 0.5s ease; }
+    #phone.on .screen-content { opacity: 1; }
+
+    .wallpaper {
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(circle at 20% 15%, #ffcf5c 0 9%, transparent 30%),
+        radial-gradient(circle at 85% 80%, #ff7aa8 0 8%, transparent 35%),
+        linear-gradient(160deg, #4aa8ff 0%, #7c5cff 55%, #ff7aa8 100%);
+    }
+    .statusbar {
+      position: absolute; z-index: 4; top: 0; left: 0; right: 0; height: 48px;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 28px 0; font-weight: 700; font-size: 15px;
+    }
+    #phone.landscape .statusbar { height: 30px; padding: 6px 30px 0 52px; font-size: 13px; }
+    .battery {
+      width: 26px; height: 12px; border: 2px solid #fff; border-radius: 4px; position: relative;
+    }
+    .battery::after { content: ""; position: absolute; inset: 1px; right: 5px; background: #fff; border-radius: 1px; }
+
+    /* Tela de bloqueio */
+    .lock {
+      position: absolute; inset: 0; z-index: 3;
+      display: flex; flex-direction: column; align-items: center;
+      padding-top: 92px; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+      transition: transform 0.6s var(--ease), opacity 0.6s ease;
+    }
+    .lock .clock { font-size: 84px; font-weight: 300; letter-spacing: -2px; line-height: 1; }
+    .lock .date { font-size: 18px; font-weight: 600; margin-top: 6px; }
+    .lock .swipe {
+      position: absolute; bottom: 18px; width: 130px; height: 5px; border-radius: 9px; background: #fff;
+    }
+    .lock .hint { position: absolute; bottom: 36px; font-size: 14px; font-weight: 600; opacity: 0.9; }
+    #phone.unlocked .lock { transform: translateY(-105%); opacity: 0; }
+
+    /* Tela inicial */
+    .home {
+      position: absolute; inset: 0; padding: 70px 22px 0;
+      display: grid; grid-template-columns: repeat(4, 1fr); align-content: start;
+      gap: 22px 10px; transition: opacity 0.3s ease;
+    }
+    #phone.landscape .home { padding: 44px 64px 0; grid-template-columns: repeat(7, 1fr); gap: 18px 10px; }
+    .home.fade { opacity: 0; }
+    #phone:not(.unlocked) .home { opacity: 0; transition: opacity 0.5s ease; }
+    .app { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .app i {
+      display: grid; place-items: center; width: 58px; height: 58px; border-radius: 15px;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2); position: relative; overflow: hidden;
+    }
+    #phone.landscape .app i { width: 50px; height: 50px; border-radius: 13px; }
+    .app span { font-size: 11px; font-weight: 600; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4); white-space: nowrap; }
+    .app i::after { content: ""; position: absolute; }
+    .a-photos { background: conic-gradient(#ff5e5e, #ffbe3b, #63d471, #3ba7ff, #a66bff, #ff5e5e); }
+    .a-photos::after { inset: 34%; background: #fff; border-radius: 50%; }
+    .a-camera { background: linear-gradient(#c9ccd6, #8f94a3); }
+    .a-camera::after { width: 40%; height: 40%; border: 5px solid #2d2f38; border-radius: 50%; }
+    .a-music { background: linear-gradient(#ff6b8b, #e2234f); }
+    .a-music::after { width: 18%; height: 45%; border-right: 6px solid #fff; border-top: 6px solid #fff; }
+    .a-maps { background: linear-gradient(135deg, #8fe39b 50%, #ffe27a 50%); }
+    .a-maps::after { width: 22%; height: 22%; background: #3b82f6; border: 3px solid #fff; border-radius: 50%; }
+    .a-clock { background: #111; }
+    .a-clock::after { width: 62%; height: 62%; border-radius: 50%; background: #fff; }
+    .a-notes { background: linear-gradient(#ffe066 30%, #fff 30%); }
+    .a-settings { background: linear-gradient(#a7acb9, #6c7280); }
+    .a-settings::after { width: 46%; height: 46%; border: 6px dotted #2d2f38; border-radius: 50%; }
+    .a-weather { background: linear-gradient(#58b4ff, #2268d8); }
+    .a-weather::after { width: 36%; height: 36%; background: #ffd43b; border-radius: 50%; top: 18%; left: 20%; }
+    .a-calc { background: #2d2f38; }
+    .a-calc::after { width: 50%; height: 50%; background: radial-gradient(circle, #ff9f0a 0 35%, transparent 36%) 0 0 / 50% 50%; }
+    .a-mail { background: linear-gradient(#5cc8ff, #1f7cf0); }
+    .a-mail::after { width: 56%; height: 38%; background: #fff; border-radius: 3px; }
+    .a-game { background: linear-gradient(#bfe6ff, #7cc6ff 60%, #57c26a 60%); }
+    .a-game canvas { width: 100%; height: 100%; }
+    .app.game span { font-weight: 800; }
+
+    /* Janela do jogo (abre a partir do ícone) */
+    #app-window {
+      position: fixed; z-index: 20; overflow: hidden; background: #4aa8ff;
+      left: 0; top: 0; width: 1280px; height: 720px; transform-origin: 0 0;
+      opacity: 0; pointer-events: none;
+    }
+    #app-window.opening { transition: transform 0.55s var(--ease), opacity 0.2s ease, border-radius 0.55s var(--ease); }
+    #app-window.square { transition: border-radius 0.3s ease; }
+    #app-window iframe { border: 0; width: 1280px; height: 720px; display: block; }
+
+    #app-window.live { pointer-events: auto; }
+    #app-window.closing { transition: transform 0.7s var(--ease), opacity 0.7s ease; transform-origin: 50% 50%; }
+
+    /* Toque do dedo */
+    .tap {
+      position: fixed; z-index: 50; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%;
+      background: rgba(255, 255, 255, 0.55); border: 3px solid rgba(255, 255, 255, 0.95);
+      box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.25); pointer-events: none;
+      animation: tap 0.45s ease-out forwards;
+    }
+    @keyframes tap {
+      from { transform: scale(0.6); opacity: 1; }
+      to { transform: scale(1.4); opacity: 0; }
+    }
+
+    /* Texto final */
+    #outro {
+      position: fixed; inset: 0; z-index: 30; display: grid; place-items: center;
+      background: #000; opacity: 0; pointer-events: none; transition: opacity 0.4s ease;
+    }
+    #outro.show { opacity: 1; }
+    #typed { font-size: 48px; font-weight: 800; letter-spacing: 0.5px; white-space: pre; }
+    #typed::after {
+      content: ""; display: inline-block; width: 4px; height: 1em; margin-left: 4px;
+      vertical-align: -0.12em; background: #ffd23f; animation: blink 0.9s steps(1) infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+  </style>
+</head>
+<body>
+  <div id="camera">
+    <div id="phone">
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="screen-content">
+          <div class="wallpaper"></div>
+          <div class="statusbar"><span>9:41</span><span class="battery"></span></div>
+          <div class="home" id="home"></div>
+          <div class="lock">
+            <div class="clock">9:41</div>
+            <div class="date">sábado, 18 de outubro</div>
+            <div class="hint">Deslize para cima para abrir</div>
+            <div class="swipe"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Fora da câmera: mover um iframe no DOM recarregaria o jogo. -->
+  <div id="app-window"><iframe id="game" title="Duelo de Contas" src="../../index.html"></iframe></div>
+  <div id="outro"><div id="typed"></div></div>
+
+  <script type="module">
+    import { drawCharacter } from '../../js/characters.js';
+
+    const $ = (s) => document.querySelector(s);
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const camera = $('#camera');
+    const phone = $('#phone');
+    const win = $('#app-window');
+
+    const APPS = [
+      ['photos', 'Fotos'], ['camera', 'Câmera'], ['music', 'Música'], ['maps', 'Mapas'],
+      ['clock', 'Relógio'], ['notes', 'Notas'], ['weather', 'Clima'], ['game', 'Duelo de Contas'],
+      ['calc', 'Calculadora'], ['mail', 'E-mail'], ['settings', 'Ajustes'],
+    ];
+    for (const [id, label] of APPS) {
+      const app = document.createElement('div');
+      app.className = `app ${id}`;
+      const icon = document.createElement('i');
+      icon.className = `a-${id}`;
+      if (id === 'game') {
+        const c = document.createElement('canvas');
+        c.width = 116; c.height = 116;
+        const ctx = c.getContext('2d');
+        ctx.scale(2, 2);
+        drawCharacter(ctx, 'urso', 29, 56, 15, { facing: 1, state: 'cheer', t: 0 });
+        icon.appendChild(c);
+        app.id = 'game-icon';
+      }
+      const span = document.createElement('span');
+      span.textContent = label;
+      app.append(icon, span);
+      $('#home').appendChild(app);
+    }
+
+    const setCamera = (scale, x = 0, y = 0, ms = 1200) => {
+      camera.style.transitionDuration = `${ms}ms`;
+      camera.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+    };
+
+    /** Posiciona a janela do jogo sobre um retângulo (coordenadas da página). */
+    function placeWindow(rect, radius) {
+      const scale = rect.width / 1280;
+      win.style.transform = `translate(${rect.left}px, ${rect.top}px) scale(${scale})`;
+      win.style.borderRadius = `${radius / scale}px`;
+    }
+
+    window.director = {
+      tap(x, y) {
+        const dot = document.createElement('div');
+        dot.className = 'tap';
+        dot.style.left = `${x}px`;
+        dot.style.top = `${y}px`;
+        document.body.appendChild(dot);
+        setTimeout(() => dot.remove(), 600);
+      },
+      // 1. começa de perto, com a tela apagada
+      async intro() {
+        camera.style.transition = 'none';
+        setCamera(1.75, 0, 120, 0);
+        void camera.offsetWidth;
+        camera.style.transition = '';
+      },
+      // 2. liga a tela e desbloqueia
+      async wake() {
+        phone.classList.add('on');
+        await sleep(1100);
+        phone.classList.add('unlocked');
+        await sleep(650);
+      },
+      // 3. zoom out
+      async zoomOut() {
+        setCamera(1, 0, 0, 1200);
+        await sleep(1300);
+      },
+      // 4. gira para paisagem
+      async rotate() {
+        phone.style.transform = 'rotate(-90deg)';
+        await sleep(950);
+        $('#home').classList.add('fade');
+        phone.classList.add('no-anim', 'landscape');
+        phone.style.transform = 'none';
+        void phone.offsetWidth;
+        phone.classList.remove('no-anim');
+        await sleep(60);
+        $('#home').classList.remove('fade');
+        await sleep(350);
+      },
+      // 5. zoom in até a tela ocupar o quadro (640×360 × 2 = 1280×720)
+      async zoomIn() {
+        setCamera(2, 0, 0, 1200);
+        await sleep(1300);
+      },
+      /** Centro do ícone do jogo, em coordenadas da página. */
+      iconCenter() {
+        const r = $('#game-icon i').getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      },
+      // 6. abre o jogo a partir do ícone; a tela do celular já ocupa o quadro todo
+      async openGame() {
+        const icon = $('#game-icon i').getBoundingClientRect();
+        win.classList.remove('opening');
+        placeWindow(icon, 26);
+        void win.offsetWidth;
+        win.classList.add('opening');
+        win.style.opacity = '1';
+        placeWindow({ left: 0, top: 0, width: 1280 }, 76);
+        await sleep(600);
+        win.classList.replace('opening', 'square');
+        win.style.borderRadius = '0px';
+        await sleep(320);
+        win.classList.remove('square');
+        win.classList.add('live');
+        camera.style.opacity = '0';
+      },
+      // 7. fecha o jogo e mostra o fundo preto
+      async closeGame() {
+        win.classList.add('closing');
+        void win.offsetWidth;
+        win.style.transform = 'scale(0.2)';
+        win.style.opacity = '0';
+        await sleep(900);
+      },
+      // 8. digita o endereço da esquerda para a direita
+      async type(text, perChar = 70) {
+        $('#outro').classList.add('show');
+        await sleep(500);
+        const out = $('#typed');
+        for (const ch of text) {
+          out.textContent += ch;
+          await sleep(perChar);
+        }
+      },
+    };
+    document.body.dataset.ready = '1';
+  </script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Imagem de compartilhamento (1200×630)</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    html, body { width: 1200px; height: 630px; overflow: hidden; }
+    .og-title {
+      position: absolute; top: 30px; left: 0; right: 0;
+      display: flex; flex-direction: column; align-items: center; gap: 14px;
+    }
+    .og-title .logo { font-size: 92px; }
+    .og-title .tagline { font-size: 32px; padding: 6px 24px; }
+    .og-ops {
+      position: absolute; top: 226px; left: 0; right: 0;
+      display: flex; justify-content: center; gap: 16px;
+    }
+    .og-ops b {
+      display: grid; place-items: center; width: 64px; height: 64px; border-radius: 18px;
+      background: var(--paper); border: 4px solid var(--ink); color: var(--ink);
+      font-size: 44px; font-weight: 900; box-shadow: 0 5px 0 var(--ink);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="stage"></canvas>
+  <div class="og-title">
+    <h1 class="logo">Duelo <span>de</span> Contas</h1>
+    <p class="tagline">O cabo de guerra da matemática!</p>
+  </div>
+  <div class="og-ops"><b>+</b><b>−</b><b>×</b><b>÷</b></div>
+  <script type="module">
+    import { Renderer } from '../../js/render.js';
+    import { getAnimal } from '../../js/characters.js';
+
+    const players = ['urso', 'coelho'].map((animal, i) => ({
+      animal, name: getAnimal(animal).name, tag: `Jogador ${i + 1}`, color: ['#1a5fd0', '#d62839'][i],
+    }));
+    const renderer = new Renderer(document.querySelector('#stage'));
+    renderer.setSceneRect({ x: 0, y: 335, w: 1200, h: 295 });
+    renderer.resetScene(-1);
+    const view = {
+      mode: 'match', rope: -1, ropeMax: 5, players, thinking: [false, false], state: 'playing', countdown: 0, winner: null,
+    };
+    // Avança alguns quadros para a cena estabilizar e deixa o ursinho no meio do puxão.
+    for (let i = 0; i < 30; i++) renderer.draw(view, 1 / 30);
+    renderer.trigger(0, 'pull');
+    renderer.draw(view, 0.12);
+    document.body.dataset.ready = '1';
+  </script>
+</body>
+</html>
