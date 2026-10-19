@@ -146,7 +146,35 @@ html, body {
   border-top: 8px solid var(--accent, var(--p0)); border-radius: 24px 24px 0 0;
   padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 6px;
 }
-.panel-head { display: flex; justify-content: space-between; gap: 8px; font-weight: 900; color: var(--accent); }
+.panel { position: relative; }
+.panel-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 900; color: var(--accent); }
+
+/* botão dos óculos: entre o nome e os acertos */
+.glasses-btn {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 4px 12px;
+  font: inherit; font-weight: 900; font-size: 0.95rem; color: var(--ink);
+  background: #fff; border: 3px solid var(--ink); border-radius: 99px; cursor: pointer;
+  box-shadow: 0 3px 0 rgba(43, 31, 58, 0.45); touch-action: manipulation;
+}
+.glasses-btn svg { width: 34px; height: 15px; }
+.glasses-btn[aria-pressed="true"] { background: var(--yellow); box-shadow: 0 0 0 3px #fff3b0, 0 3px 0 rgba(43, 31, 58, 0.45); }
+.glasses-btn:active { transform: translateY(2px); }
+
+/* lousinha da ajuda visual: flutua acima do card, sem empurrar o painel */
+.help-board {
+  position: absolute; left: 10px; bottom: calc(100% + 10px); z-index: 1;
+  width: min(300px, calc(100% - 20px), 22vw); height: clamp(100px, 21vh, 175px);
+  background: #2f6b47; border: 8px solid #8b5a2b; border-radius: 14px;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.25), 0 6px 14px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+/* na direita, encosta na borda de fora para não cobrir o bichinho */
+.panel[data-side="1"] .help-board { left: auto; right: 10px; }
+.help-board.pop { animation: board-pop 0.25s ease-out; }
+@keyframes board-pop { from { transform: scale(0.92); opacity: 0.4; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { /* na direita, encosta na borda de fora para não cobrir o bichinho */
+.panel[data-side="1"] .help-board { left: auto; right: 10px; }
+.help-board.pop { animation: none; } }
 .panel-name { font-size: 1.05rem; }
 .panel-score { font-size: 0.95rem; color: var(--ink-soft); }
 .display {
@@ -236,6 +264,15 @@ html, body {
 .match.side .panel-animal, .match.side .panel-score, .match.side .cpu-note { display: none; }
 .match.side .panel { gap: 4px; }
 .match.side .keypad { gap: 6px; }
+.match.side .glasses-btn span { display: none; }
+.match.side .glasses-btn { padding: 2px 8px; min-height: 34px; }
+/* celular deitado: a lousa fica ao lado do painel, sobre o cenário */
+.match.side .help-board {
+  bottom: auto; top: 56px; height: clamp(90px, 34vh, 150px);
+  width: min(240px, calc(50vw - min(31vw, 300px) - 16px));
+}
+.match.side .panel[data-side="0"] .help-board { left: calc(100% + 8px); }
+.match.side .panel[data-side="1"] .help-board { left: auto; right: calc(100% + 8px); }
 
 /* ---------- resultado ---------- */
 .result { align-items: center; justify-content: flex-end; }

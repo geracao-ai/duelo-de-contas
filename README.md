@@ -17,10 +17,11 @@ Feito só com HTML, Canvas e JavaScript puro (módulos ES), sem build, sem depen
 3. Na partida, resolva a conta que aparece no seu lado. No **Fácil**, toque na resposta certa entre **4 opções**; no **Médio** e no **Difícil**, digite a resposta no teclado da tela e aperte **OK**.
    - **Acertou:** a corda anda um passo na sua direção.
    - **Errou:** nada se perde. Você tem outra chance com a mesma conta (no Fácil, a opção errada fica apagada); no segundo erro a resposta aparece por instantes e vem uma conta nova.
+   - **Óculos 👓:** o botão **Óculos** (no seu painel, entre o nome e os acertos) faz o bichinho pôr óculos e mostra a conta desenhada em blocos numa lousinha acima do card: soma em dois grupos, subtração com os blocos tirados riscados, multiplicação em grade e divisão em caixinhas. Números grandes viram barras de 10 e cubinhos (material dourado). No Fácil e no Médio aparecem os números embaixo dos grupos. Cada jogador liga o seu; começa desligado.
 4. Vence quem puxar a fita vermelha até a bandeira do seu lado (5 passos a partir do centro).
 5. **Pausa** (ou a tecla `Esc`) interrompe o jogo; **Sair** volta ao menu.
 
-No fim, a tela de resultado mostra acertos, erros e tempo médio de cada jogador. A tela **Estatísticas** guarda, neste navegador, partidas jogadas, vitórias contra o computador, acertos e erros por operação, tempo médio de resposta e a melhor sequência de acertos (há um botão para zerar).
+No fim, a tela de resultado mostra acertos, erros e tempo médio de cada jogador. A tela **Estatísticas** guarda, neste navegador, partidas jogadas, vitórias contra o computador, acertos e erros por operação, tempo médio de resposta, a melhor sequência de acertos e quantas respostas foram dadas de óculos (há um botão para zerar).
 
 ### Teclado físico
 
@@ -77,6 +78,7 @@ js/audio.js         efeitos e melodia sintetizados com WebAudio, botão de mudo
 js/stats.js         estatísticas e preferências no localStorage
 js/keypad.js        teclado numérico na tela
 js/choices.js       as 4 opções de resposta do nível Fácil
+js/visual-help.js   óculos: a conta desenhada em blocos na lousinha (modelo puro e desenho)
 tests/              testes com node:test
 assets/             vídeo de demonstração, prévia animada e imagem de compartilhamento
 tools/              scripts que geram o vídeo (tools/demo) e a imagem (tools/og)

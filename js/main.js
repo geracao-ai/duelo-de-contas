@@ -6,6 +6,7 @@ import { CpuPlayer } from './ai.js';
 import { Renderer } from './render.js';
 import { createKeypad } from './keypad.js';
 import { createChoices } from './choices.js';
+import { buildHelpModel, fitLayout, drawHelpBoard } from './visual-help.js';
 import * as audio from './audio.js';
 import * as stats from './stats.js';
 import {
@@ -304,7 +305,8 @@ function buildPanel(side, info, input) {
   const name = make('span', 'panel-name');
   name.append(make('span', '', info.tag), make('span', 'panel-animal', ` · ${info.name}`));
   const score = make('span', 'panel-score', 'Acertos: 0');
-  head.append(name, score);
+  const glassesButton = human ? makeGlassesButton(side, info.tag) : null;
+  head.append(...[name, glassesButton, score].filter(Boolean));
   const display = make('div', 'display');
   const problem = make('span', 'problem-text');
   const equals = make('span', '', '=');
@@ -314,7 +316,14 @@ function buildPanel(side, info, input) {
   root.append(head, display, msg);
   const panel = {
     side, root, problem, answer, msg, score, msgUntil: 0, keypad: null, choices: null, note: null,
+    glassesButton, board: null, boardKey: null,
   };
+  if (human) {
+    panel.board = make('canvas', 'help-board');
+    panel.board.hidden = true;
+    panel.board.setAttribute('aria-hidden', 'true');
+    root.appendChild(panel.board);
+  }
   if (input === 'choices') {
     panel.choices = createChoices({
       playerLabel: info.tag,
@@ -334,6 +343,51 @@ function buildPanel(side, info, input) {
     root.appendChild(panel.note);
   }
   return panel;
+}
+
+const GLASSES_ICON = '<svg viewBox="0 0 48 20" aria-hidden="true" focusable="false">'
+  + '<circle cx="12" cy="11" r="8" fill="rgba(190,230,255,.5)" stroke="currentColor" stroke-width="3"/>'
+  + '<circle cx="36" cy="11" r="8" fill="rgba(190,230,255,.5)" stroke="currentColor" stroke-width="3"/>'
+  + '<path d="M20 9 Q24 5 28 9" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>';
+
+function makeGlassesButton(side, tag) {
+  const button = make('button', 'glasses-btn');
+  button.type = 'button';
+  button.innerHTML = `${GLASSES_ICON}<span>Óculos</span>`;
+  button.setAttribute('aria-pressed', 'false');
+  button.setAttribute('aria-label', `Óculos: mostrar a conta em blocos, ${tag}`);
+  // pointerdown: os dois jogadores podem tocar ao mesmo tempo (como nos teclados).
+  button.addEventListener('pointerdown', (event) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    event.preventDefault();
+    perform(side, 'glasses');
+  });
+  button.addEventListener('click', (event) => {
+    if (event.detail === 0) perform(side, 'glasses');
+  });
+  return button;
+}
+
+/** Desenha a lousinha do jogador quando a conta (ou o tamanho) muda. */
+function updateBoard(panel, player) {
+  const show = Boolean(player.glasses && player.problem);
+  panel.board.hidden = !show;
+  if (!show) return;
+  const { board } = panel;
+  const w = board.clientWidth;
+  const h = board.clientHeight;
+  const key = `${player.problem.text}|${w}x${h}`;
+  if (key === panel.boardKey || !w || !h) return;
+  panel.boardKey = key;
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  board.width = Math.round(w * dpr);
+  board.height = Math.round(h * dpr);
+  const ctx = board.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawHelpBoard(ctx, w, h, fitLayout(buildHelpModel(player.problem, app.settings.difficulty), w, h));
+  board.classList.remove('pop');
+  void board.offsetWidth; // reinicia a animação de entrada
+  board.classList.add('pop');
 }
 
 function playerInfo(cpuMode, p1, p2) {
@@ -389,6 +443,7 @@ function handleGameEvent(type, payload) {
     wrong: () => onWrong(payload),
     reveal: () => onReveal(payload),
     win: () => onWin(payload),
+    glasses: () => onGlasses(payload),
   };
   handlers[type]?.();
 }
@@ -401,7 +456,7 @@ function onProblem({ side, problem }) {
 function recordHumanAnswer(side, payload, correct) {
   if (!humanSides().includes(side)) return;
   stats.recordAnswer(app.stats, {
-    op: payload.problem.op, correct, seconds: payload.seconds, streak: payload.streak,
+    op: payload.problem.op, correct, seconds: payload.seconds, streak: payload.streak, glasses: payload.glasses,
   });
   stats.saveStats(app.stats);
 }
@@ -428,6 +483,15 @@ function onWrong(payload) {
   recordHumanAnswer(side, payload, false);
 }
 
+function onGlasses({ side, on }) {
+  const panel = app.match.panels[side];
+  panel.glassesButton?.setAttribute('aria-pressed', String(on));
+  panel.boardKey = null;
+  audio.playSfx(on ? 'glassesOn' : 'glassesOff');
+  renderer.trigger(side, on ? 'glassesOn' : 'glassesOff');
+  announce(on ? `${whoName(side)} pôs os óculos. A conta aparece em blocos.` : `${whoName(side)} tirou os óculos.`);
+}
+
 function onReveal({ side, answer }) {
   setMessage(side, `A resposta era ${answer}`, 'bad');
   announce(`A resposta era ${answer}.`);
@@ -447,7 +511,9 @@ function perform(side, type, digit) {
   if (!m || app.screen !== 'match' || app.paused) return;
   if (m.cpuMode && side === 1) return;
   const { game } = m;
-  if (type === 'choose') {
+  if (type === 'glasses') {
+    if (game.state !== 'over') game.toggleGlasses(side);
+  } else if (type === 'choose') {
     const value = game.players[side].choices?.[digit];
     if (value !== undefined) game.choose(side, value);
   } else if (type === 'digit') {
@@ -474,6 +540,7 @@ function updatePanels(now) {
     setText(panel.score, `Acertos: ${player.correct}`);
     panel.keypad?.setEnabled(game.canInput(panel.side));
     panel.choices?.update(player.choices, player.eliminated, game.canInput(panel.side));
+    if (panel.board) updateBoard(panel, player);
     if (panel.note) setText(panel.note, cpuNote(m.cpu));
     if (panel.msgUntil && now > panel.msgUntil) {
       panel.msgUntil = 0;
@@ -532,6 +599,7 @@ function renderStats() {
     tile(String(st.winsVsCpu), 'Vitórias contra o computador'),
     tile(String(st.bestStreak), 'Melhor sequência de acertos'),
     tile(formatSeconds(stats.averageTime(st)), 'Tempo médio de resposta'),
+    tile(String(st.glasses.correct + st.glasses.wrong), 'Respostas de óculos'),
   );
   const rows = OPERATIONS.map((op) => {
     const { correct, wrong } = st.byOp[op];
@@ -627,6 +695,8 @@ function onKeyDown(event) {
 
 // ---------- laço principal ----------
 
+const withGlasses = (m) => m.info.map((p, i) => ({ ...p, glasses: m.game.players[i].glasses }));
+
 function buildView() {
   const m = app.match;
   if (app.screen === 'match' && m) {
@@ -635,7 +705,7 @@ function buildView() {
       mode: 'match',
       rope: game.rope,
       ropeMax: game.ropeMax,
-      players: m.info,
+      players: withGlasses(m),
       thinking: [false, Boolean(m.cpu?.thinking)],
       state: game.state,
       countdown: game.countdownLeft,
@@ -643,7 +713,7 @@ function buildView() {
     };
   }
   if (app.screen === 'result' && m) {
-    return { mode: 'result', players: m.info, winner: m.game.winner, state: 'over' };
+    return { mode: 'result', players: withGlasses(m), winner: m.game.winner, state: 'over' };
   }
   if (app.screen === 'menu') return { mode: 'menu', menuAnimals: app.menuAnimals, state: 'idle' };
   return { mode: 'plain', state: 'idle' };
