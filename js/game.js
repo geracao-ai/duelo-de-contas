@@ -22,6 +22,7 @@ export function createPlayer(side) {
     reveal: null, // { answer, left } enquanto a resposta é mostrada
     choices: null, // opções de resposta no modo de múltipla escolha
     eliminated: [], // opções já tentadas (erradas) na conta atual
+    glasses: false, // óculos (ajuda visual) ligados
     correct: 0,
     wrong: 0,
     times: [],
@@ -123,6 +124,14 @@ export class Game {
       : this.onWrong(player);
   }
 
+  /** Liga/desliga os óculos (ajuda visual) de um jogador. Devolve o novo estado. */
+  toggleGlasses(side) {
+    const player = this.players[side];
+    player.glasses = !player.glasses;
+    this.emit('glasses', { side, on: player.glasses });
+    return player.glasses;
+  }
+
   /** Responde tocando numa das opções (múltipla escolha). Mesmo retorno de submit(). */
   choose(side, value) {
     if (!this.canInput(side)) return null;
@@ -151,7 +160,7 @@ export class Game {
     const step = player.side === 0 ? -1 : 1;
     this.rope = Math.max(-this.ropeMax, Math.min(this.ropeMax, this.rope + step));
     this.emit('correct', {
-      side: player.side, problem, seconds, streak: player.streak, rope: this.rope,
+      side: player.side, problem, seconds, streak: player.streak, rope: this.rope, glasses: player.glasses,
     });
 
     if (Math.abs(this.rope) >= this.ropeMax) {
@@ -172,7 +181,9 @@ export class Game {
     player.attempts += 1;
     player.input = '';
     this.opStats(player, problem.op).wrong += 1;
-    this.emit('wrong', { side: player.side, problem, attempts: player.attempts });
+    this.emit('wrong', {
+      side: player.side, problem, attempts: player.attempts, glasses: player.glasses,
+    });
     if (player.attempts >= MAX_ATTEMPTS) {
       player.reveal = { answer: problem.answer, left: REVEAL_SECONDS };
       this.emit('reveal', { side: player.side, answer: problem.answer });

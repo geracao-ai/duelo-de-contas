@@ -167,3 +167,27 @@ test('computador na múltipla escolha só responde com opções disponíveis', (
   }
   assert.equal(game.rope, 1);
 });
+
+test('óculos: cada jogador liga o seu e as respostas registram o estado', () => {
+  const events = [];
+  const game = newGame({ onEvent: (type, payload) => events.push({ type, ...payload }) });
+  assert.equal(game.players[0].glasses, false);
+  assert.equal(game.toggleGlasses(0), true);
+  assert.equal(game.players[1].glasses, false);
+  answer(game, 0, game.players[0].problem.answer);
+  answer(game, 1, game.players[1].problem.answer);
+  const correct = events.filter((e) => e.type === 'correct');
+  assert.deepEqual(correct.map((e) => e.glasses), [true, false]);
+  assert.equal(game.toggleGlasses(0), false);
+});
+
+test('estatísticas: contam respostas de óculos', () => {
+  const stats = emptyStats();
+  recordAnswer(stats, { op: 'add', correct: true, glasses: true });
+  recordAnswer(stats, { op: 'add', correct: false, glasses: true });
+  recordAnswer(stats, { op: 'add', correct: true });
+  assert.deepEqual(stats.glasses, { correct: 1, wrong: 1 });
+  const storage = fakeStorage();
+  saveStats(stats, storage);
+  assert.deepEqual(loadStats(storage).glasses, { correct: 1, wrong: 1 });
+});

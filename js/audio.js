@@ -87,12 +87,18 @@ const SFX = {
       tone(midiToHz(m), t + i * 0.13, i === 6 ? 0.7 : 0.2, { type: 'triangle' });
     });
   },
+  glassesOn(t) {
+    [76, 81, 84, 88, 93].forEach((m, i) => tone(midiToHz(m), t + i * 0.05, 0.14, { type: 'sine', gain: 0.5 }));
+  },
+  glassesOff(t) {
+    tone(520, t, 0.16, { type: 'triangle', gain: 0.4, slideTo: 260 });
+  },
   click(t) {
     tone(880, t, 0.07, { type: 'square', gain: 0.25 });
   },
 };
 
-/** Toca um efeito: 'correct' | 'wrong' | 'pull' | 'win' | 'click'. */
+/** Toca um efeito: 'correct' | 'wrong' | 'pull' | 'win' | 'click' | 'glassesOn' | 'glassesOff'. */
 export function playSfx(name) {
   if (!ctx || muted || !SFX[name]) return;
   try {

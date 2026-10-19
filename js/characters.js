@@ -198,6 +198,35 @@ function drawEyes(ctx, a, s, pose, t) {
   }
 }
 
+/** Óculos redondos sobre os olhos (ajuda visual ligada). */
+function drawGlasses(ctx, a, s) {
+  const frog = a.id === 'sapo';
+  const eyeY = frog ? -2.8 * s : -2.0 * s;
+  const eyeX = frog ? 0.58 * s : 0.42 * s;
+  const r = (frog ? 0.27 : 0.3) * s * 1.42;
+  const lw = 0.075 * s;
+  for (const side of [-1, 1]) {
+    ellipse(ctx, side * eyeX, eyeY, r, r, 'rgba(190, 230, 255, 0.28)');
+    ctx.beginPath();
+    ctx.arc(side * eyeX, eyeY, r, 0, Math.PI * 2);
+    ctx.lineWidth = lw;
+    ctx.strokeStyle = '#2b2230';
+    ctx.stroke();
+  }
+  // ponte entre as lentes e haste para trás
+  ctx.beginPath();
+  ctx.moveTo(-eyeX + r * 0.85, eyeY - r * 0.35);
+  ctx.quadraticCurveTo(0, eyeY - r * 0.75, eyeX - r * 0.85, eyeY - r * 0.35);
+  ctx.lineWidth = lw;
+  ctx.strokeStyle = '#2b2230';
+  ctx.stroke();
+  line(ctx, -eyeX - r, eyeY - r * 0.15, -eyeX - r - 0.28 * s, eyeY - r * 0.3, lw, '#2b2230');
+  // brilho nas lentes
+  for (const side of [-1, 1]) {
+    line(ctx, side * eyeX + r * 0.25, eyeY - r * 0.55, side * eyeX + r * 0.55, eyeY - r * 0.2, lw * 0.6, 'rgba(255, 255, 255, 0.85)');
+  }
+}
+
 function drawBlush(ctx, a, s) {
   const y = a.id === 'sapo' ? -1.78 * s : -1.66 * s;
   const x = a.id === 'sapo' ? 0.78 * s : 0.66 * s;
@@ -305,11 +334,11 @@ function armTargets(pose, s, t, rope) {
  * @param {number} x posição dos pés (mundo)
  * @param {number} y posição dos pés (mundo)
  * @param {number} s tamanho (px) — a altura total é ~3,1 * s
- * @param {{ facing?: 1|-1, state?: string, t?: number, stateT?: number, rope?: {x:number,y:number} }} opts
+ * @param {{ facing?: 1|-1, state?: string, t?: number, stateT?: number, rope?: {x:number,y:number}, glasses?: boolean }} opts
  *   `rope` é o ponto da corda em coordenadas do mundo, usado pelos braços.
  */
 export function drawCharacter(ctx, animalId, x, y, s, opts = {}) {
-  const { facing = 1, state = 'idle', t = 0, stateT = 0, rope = null } = opts;
+  const { facing = 1, state = 'idle', t = 0, stateT = 0, rope = null, glasses = false } = opts;
   const a = getAnimal(animalId);
   const pose = computePose(state, t, stateT);
   const ropeLocal = rope
@@ -348,6 +377,7 @@ export function drawCharacter(ctx, animalId, x, y, s, opts = {}) {
   drawBlush(ctx, a, s);
   drawEyes(ctx, a, s, pose, t);
   drawNose(ctx, a, s);
+  if (glasses) drawGlasses(ctx, a, s);
   drawMouth(ctx, a, s, pose);
   ctx.restore();
   drawArm(ctx, a, s, shoulders[0], hands[0]);

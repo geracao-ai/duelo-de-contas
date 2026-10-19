@@ -49,6 +49,7 @@ export function emptyStats() {
     totalTime: 0,
     timedAnswers: 0,
     bestStreak: 0,
+    glasses: { correct: 0, wrong: 0 }, // respostas dadas de óculos
   };
 }
 
@@ -63,6 +64,8 @@ function sanitize(raw) {
   stats.totalTime = num(raw.totalTime);
   stats.timedAnswers = num(raw.timedAnswers);
   stats.bestStreak = num(raw.bestStreak);
+  stats.glasses.correct = num(raw.glasses?.correct);
+  stats.glasses.wrong = num(raw.glasses?.wrong);
   for (const op of OPERATIONS) {
     stats.byOp[op].correct = num(raw.byOp?.[op]?.correct);
     stats.byOp[op].wrong = num(raw.byOp?.[op]?.wrong);
@@ -90,9 +93,12 @@ export function resetStats(storage = getStorage()) {
 }
 
 /** Registra uma resposta de jogador humano. `streak` é a sequência atual de acertos. */
-export function recordAnswer(stats, { op, correct, seconds = 0, streak = 0 }) {
+export function recordAnswer(stats, {
+  op, correct, seconds = 0, streak = 0, glasses = false,
+}) {
   const entry = stats.byOp[op];
   if (!entry) return stats;
+  if (glasses) stats.glasses[correct ? 'correct' : 'wrong'] += 1;
   if (correct) {
     entry.correct += 1;
     stats.totalTime += num(seconds);

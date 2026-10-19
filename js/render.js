@@ -65,11 +65,32 @@ export class Renderer {
     this.scene = rect;
   }
 
-  /** Dispara uma animação pontual de um lado: 'pull'. */
+  /** Dispara uma animação pontual de um lado: 'pull', 'glassesOn' ou 'glassesOff'. */
   trigger(side, type) {
-    if (type !== 'pull') return;
-    this.pull[side] = PULL_DURATION;
-    if (!this.reducedMotion) this.burstStars(side);
+    if (type === 'pull') {
+      this.pull[side] = PULL_DURATION;
+      if (!this.reducedMotion) this.burstStars(side);
+    } else if (type === 'glassesOn' || type === 'glassesOff') {
+      if (!this.reducedMotion) this.burstAtHead(side, type === 'glassesOn');
+    }
+  }
+
+  /** Brilhos (ao pôr os óculos) ou fumacinha (ao tirar) em volta da cabeça. */
+  burstAtHead(side, sparkle) {
+    const geo = this.lastGeometry;
+    if (!geo) return;
+    const x = side === 0 ? geo.leftX : geo.rightX;
+    const y = geo.groundY - 2.0 * geo.s;
+    for (let i = 0; i < (sparkle ? 12 : 8); i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = sparkle ? 50 + Math.random() * 90 : 20 + Math.random() * 40;
+      this.addParticle({
+        x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - (sparkle ? 30 : 10),
+        rot: 0, vr: 0, size: sparkle ? 4 + Math.random() * 4 : 7 + Math.random() * 6,
+        color: sparkle ? '#fff3a0' : 'rgba(255, 255, 255, 0.8)', life: sparkle ? 0.7 : 0.55,
+        shape: sparkle ? 'star' : 'circle', gravity: sparkle ? 80 : -20,
+      });
+    }
   }
 
   // ---------- partículas ----------
@@ -132,6 +153,10 @@ export class Renderer {
       ctx.fillStyle = p.color;
       if (p.shape === 'star') {
         this.starPath(p.size);
+        ctx.fill();
+      } else if (p.shape === 'circle') {
+        ctx.beginPath();
+        ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
         ctx.fill();
       } else {
         ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
@@ -392,7 +417,7 @@ export class Renderer {
       const state = this.poseFor(side, view);
       drawCharacter(this.ctx, view.players[side].animal, xs[side], groundY, s, {
         facing, state, t: this.time + side * 0.7, stateT: this.overTime,
-        rope: { x: ends[side], y: ropeY },
+        rope: { x: ends[side], y: ropeY }, glasses: Boolean(view.players[side].glasses),
       });
       this.drawNameTag(xs[side], groundY + Math.max(0.55 * s, 16), s, view.players[side]);
     }
@@ -485,10 +510,11 @@ export class Renderer {
     const winner = view.winner;
     const loser = 1 - winner;
     drawCharacter(this.ctx, view.players[winner].animal, winX, groundY, s * 1.15, {
-      facing: 1, state: 'cheer', t: this.time,
+      facing: 1, state: 'cheer', t: this.time, glasses: Boolean(view.players[winner].glasses),
     });
     drawCharacter(this.ctx, view.players[loser].animal, loseX, groundY, s, {
       facing: -1, state: this.overTime < 0.6 ? 'fall' : 'sad', t: this.time, stateT: this.overTime,
+      glasses: Boolean(view.players[loser].glasses),
     });
     this.drawNameTag(winX, groundY + 0.9 * s, s, view.players[winner]);
     this.drawNameTag(loseX, groundY + 0.9 * s, s, view.players[loser]);
