@@ -127,3 +127,43 @@ test('estatísticas: registro, persistência e preferências', () => {
   assert.deepEqual(s.ops, ['mul']);
   assert.notEqual(s.p1, s.p2);
 });
+
+test('múltipla escolha: acerto puxa, erro apaga a opção e o 2º erro revela', () => {
+  const game = newGame({ choices: true });
+  const player = game.players[0];
+  assert.equal(player.choices.length, 4);
+  assert.ok(player.choices.includes(player.problem.answer));
+
+  assert.equal(game.choose(0, player.problem.answer), 'correct');
+  assert.equal(game.rope, -1);
+
+  const [w1, w2] = player.choices.filter((n) => n !== player.problem.answer);
+  assert.equal(game.choose(0, w1), 'wrong');
+  assert.deepEqual(player.eliminated, [w1]);
+  assert.equal(game.choose(0, w1), null, 'opção apagada não vale de novo');
+  assert.equal(game.choose(0, 999), null, 'valor fora das opções é ignorado');
+  assert.equal(game.choose(0, w2), 'reveal');
+  game.tick(REVEAL_SECONDS + 0.1);
+  assert.deepEqual(player.eliminated, []);
+  assert.equal(player.choices.length, 4);
+});
+
+test('modo teclado não gera opções', () => {
+  const game = newGame();
+  assert.equal(game.players[0].choices, null);
+});
+
+test('computador na múltipla escolha só responde com opções disponíveis', () => {
+  const problem = { op: 'add', a: 2, b: 3, answer: 5 };
+  for (let i = 0; i < 50; i++) {
+    const n = pickCpuAnswer(problem, 0, Math.random, [5, 4, 6, 1]);
+    assert.ok([4, 6, 1].includes(n));
+  }
+  const game = newGame({ choices: true });
+  const cpu = new CpuPlayer('facil', () => 0.01, 1); // sempre acerta, atraso mínimo
+  for (let i = 0; i < 400 && game.rope === 0; i++) {
+    cpu.update(0.05, game);
+    game.tick(0.05);
+  }
+  assert.equal(game.rope, 1);
+});

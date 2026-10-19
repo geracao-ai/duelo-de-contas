@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  OPERATIONS, DIFFICULTIES, RANGES, generateProblem, checkAnswer, formatProblem,
+  OPERATIONS, DIFFICULTIES, RANGES, CHOICE_COUNT, generateProblem, generateChoices, checkAnswer, formatProblem,
 } from '../js/problems.js';
 
 // PRNG determinístico (mulberry32) para testes reprodutíveis.
@@ -130,4 +130,38 @@ test('checkAnswer aceita texto e número, rejeita vazio e inválido', () => {
 
 test('formatProblem mostra a conta com interrogação', () => {
   assert.equal(formatProblem({ text: '3 × 4' }), '3 × 4 = ?');
+});
+
+test('opções: 4 valores distintos, com a resposta e sem negativos', () => {
+  const rng = seeded(2024);
+  for (const difficulty of DIFFICULTIES) {
+    for (const op of OPERATIONS) {
+      for (let i = 0; i < 500; i++) {
+        const p = generateProblem([op], difficulty, rng);
+        const choices = generateChoices(p, rng);
+        const label = `${p.text} -> ${choices}`;
+        assert.equal(choices.length, CHOICE_COUNT, label);
+        assert.equal(new Set(choices).size, CHOICE_COUNT, label);
+        assert.ok(choices.includes(p.answer), label);
+        assert.ok(choices.every((n) => Number.isInteger(n) && n >= 0), label);
+      }
+    }
+  }
+});
+
+test('opções: inclui o erro de operação trocada e muda a posição da certa', () => {
+  const rng = seeded(8);
+  const p = { op: 'add', a: 7, b: 3, answer: 10 };
+  assert.ok(generateChoices(p, rng).includes(4)); // 7 − 3
+  const positions = new Set();
+  for (let i = 0; i < 200; i++) positions.add(generateChoices(p, rng).indexOf(10));
+  assert.equal(positions.size, CHOICE_COUNT);
+});
+
+test('opções: resposta pequena ainda gera 4 opções', () => {
+  const p = { op: 'sub', a: 2, b: 1, answer: 1 };
+  const choices = generateChoices(p, seeded(1));
+  assert.equal(new Set(choices).size, CHOICE_COUNT);
+  assert.ok(choices.includes(1) && choices.includes(3)); // 3 = 2 + 1 (operação trocada)
+  assert.ok(choices.every((n) => n >= 0));
 });

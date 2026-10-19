@@ -103,6 +103,42 @@ export function generateProblem(ops, difficulty, rng = Math.random, previous = n
   return problem;
 }
 
+export const CHOICE_COUNT = 4;
+
+/** Erro típico de quem troca a operação (ex.: 7 + 3 → 4); null se não servir. */
+const SWAPPED_OP = {
+  add: ({ a, b }) => a - b,
+  sub: ({ a, b }) => a + b,
+  mul: ({ a, b }) => a + b,
+  div: ({ b }) => b,
+};
+
+function shuffle(list, rng) {
+  const out = [...list];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = randInt(rng, 0, i);
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+/**
+ * Opções de múltipla escolha: a resposta certa e erradas plausíveis
+ * (operação trocada e vizinhos), distintas, sem negativos, embaralhadas.
+ */
+export function generateChoices(problem, rng = Math.random, count = CHOICE_COUNT) {
+  const { answer } = problem;
+  const valid = (n) => Number.isInteger(n) && n >= 0 && n !== answer;
+  const near = shuffle([1, -1, 2, -2, 3, -3].map((d) => answer + d), rng);
+  const far = [4, -4, 5, -5, 10, -10, 6, 7, 8, 9].map((d) => answer + d);
+  const wrong = [];
+  for (const n of [SWAPPED_OP[problem.op](problem), ...near, ...far]) {
+    if (wrong.length === count - 1) break;
+    if (valid(n) && !wrong.includes(n)) wrong.push(n);
+  }
+  return shuffle([answer, ...wrong], rng);
+}
+
 /** Confere a resposta (número ou texto só com dígitos). */
 export function checkAnswer(problem, value) {
   if (value === null || value === undefined) return false;

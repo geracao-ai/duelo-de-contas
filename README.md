@@ -14,9 +14,9 @@ Feito só com HTML, Canvas e JavaScript puro (módulos ES), sem build, sem depen
 
 1. No menu, escolha **Contra o computador** ou **2 jogadores**.
 2. Na configuração, escolha as operações (`+ − × ÷`, pelo menos uma), a dificuldade (Fácil, Médio ou Difícil) e o seu bichinho (Ursinho, Coelhinha, Gatinho, Pandinha, Raposinha ou Sapinho). No modo 2 jogadores os bichinhos precisam ser diferentes; no modo contra o computador, ele sorteia um bichinho diferente do seu.
-3. Na partida, resolva a conta que aparece no seu lado usando o teclado da tela e aperte **OK** para confirmar.
+3. Na partida, resolva a conta que aparece no seu lado. No **Fácil**, toque na resposta certa entre **4 opções**; no **Médio** e no **Difícil**, digite a resposta no teclado da tela e aperte **OK**.
    - **Acertou:** a corda anda um passo na sua direção.
-   - **Errou:** nada se perde. Você tem outra chance com a mesma conta; no segundo erro a resposta aparece por instantes e vem uma conta nova.
+   - **Errou:** nada se perde. Você tem outra chance com a mesma conta (no Fácil, a opção errada fica apagada); no segundo erro a resposta aparece por instantes e vem uma conta nova.
 4. Vence quem puxar a fita vermelha até a bandeira do seu lado (5 passos a partir do centro).
 5. **Pausa** (ou a tecla `Esc`) interrompe o jogo; **Sair** volta ao menu.
 
@@ -28,6 +28,8 @@ No fim, a tela de resultado mostra acertos, erros e tempo médio de cada jogador
 | --- | --- | --- |
 | Contra o computador | Fileira de números `0-9`, `Backspace` (apagar), `Enter` (OK). O teclado numérico também funciona. | (computador) |
 | 2 jogadores | Fileira de números `0-9`, `Backspace` (apagar), `Enter` (OK) | Teclado numérico: `Numpad0-9`, `NumpadDecimal` (apagar), `NumpadEnter` (OK) |
+
+No **Fácil** (4 opções), as teclas `1` a `4` escolhem a opção, na mesma ordem da tela; no modo 2 jogadores, a fileira de números vale para a esquerda e o teclado numérico para a direita.
 
 No modo 2 jogadores o teclado físico é opcional: cada lado também tem seu teclado na tela, que funciona por toque ou mouse. Em celulares, o jogo funciona melhor com o aparelho deitado.
 
@@ -74,6 +76,7 @@ js/characters.js    os 6 bichinhos desenhados com formas do canvas
 js/audio.js         efeitos e melodia sintetizados com WebAudio, botão de mudo
 js/stats.js         estatísticas e preferências no localStorage
 js/keypad.js        teclado numérico na tela
+js/choices.js       as 4 opções de resposta do nível Fácil
 tests/              testes com node:test
 assets/             vídeo de demonstração, prévia animada e imagem de compartilhamento
 tools/              scripts que geram o vídeo (tools/demo) e a imagem (tools/og)
