@@ -50,7 +50,8 @@ export function createChoices({ playerLabel, onChoose }) {
         const out = eliminated.includes(value);
         button.classList.toggle('is-out', out);
         button.disabled = !enabled || out || value === undefined;
-        button.setAttribute('aria-label', `Resposta ${text}, ${playerLabel}`);
+        const label = `Resposta ${text}, ${playerLabel}`;
+        if (button.getAttribute('aria-label') !== label) button.setAttribute('aria-label', label);
       });
       element.classList.toggle('is-disabled', !enabled);
     },
