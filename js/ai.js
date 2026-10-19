@@ -17,10 +17,15 @@ export function pickDelay(difficulty, rng = Math.random) {
   return min + rng() * (max - min);
 }
 
-/** Resposta do computador: certa com probabilidade `accuracy`, senão um erro plausível. */
-export function pickCpuAnswer(problem, accuracy, rng = Math.random) {
+/**
+ * Resposta do computador: certa com probabilidade `accuracy`, senão um erro plausível.
+ * Na múltipla escolha, o erro sai das opções ainda disponíveis.
+ */
+export function pickCpuAnswer(problem, accuracy, rng = Math.random, options = null) {
   if (rng() < accuracy) return problem.answer;
   const { answer, a, b } = problem;
+  const wrongOptions = options?.filter((n) => n !== answer);
+  if (wrongOptions?.length) return wrongOptions[randInt(rng, 0, wrongOptions.length - 1)];
   const candidates = [answer + 1, answer - 1, answer + 2, answer - 2, answer + 10, answer - 10, answer + b, answer - b, answer + a]
     .filter((n) => n >= 0 && n !== answer && n <= 999);
   return candidates[randInt(rng, 0, candidates.length - 1)];
@@ -42,11 +47,13 @@ export class CpuPlayer {
     return this.phase === 'thinking';
   }
 
-  startThinking(problem) {
+  startThinking(player) {
+    const { problem } = player;
+    const options = player.choices?.filter((n) => !player.eliminated.includes(n)) ?? null;
     this.problem = problem;
     this.phase = 'thinking';
     this.timer = pickDelay(this.difficulty, this.rng);
-    this.target = String(pickCpuAnswer(problem, CPU_PROFILES[this.difficulty].accuracy, this.rng));
+    this.target = String(pickCpuAnswer(problem, CPU_PROFILES[this.difficulty].accuracy, this.rng, options));
     this.typed = 0;
   }
 
@@ -56,7 +63,7 @@ export class CpuPlayer {
       this.phase = 'idle';
       return;
     }
-    if (this.problem !== player.problem) this.startThinking(player.problem);
+    if (this.problem !== player.problem) this.startThinking(player);
     this.timer -= dt;
     if (this.phase === 'thinking' && this.timer <= 0) this.enterTyping();
     else if (this.phase === 'typing') this.stepTyping(game);
@@ -81,11 +88,12 @@ export class CpuPlayer {
 
   confirm(game, player) {
     const problem = player.problem;
-    game.submit(this.side);
+    if (player.choices) game.choose(this.side, Number(this.target));
+    else game.submit(this.side);
     // Se errou e a mesma conta continua, tenta de novo; se mudou, o update reinicia sozinho.
     this.phase = 'idle';
     if (player.problem === problem && !player.reveal && game.state === 'playing') {
-      this.startThinking(problem);
+      this.startThinking(player);
     }
   }
 }

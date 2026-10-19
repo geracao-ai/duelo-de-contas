@@ -55,6 +55,14 @@ function solve(text) {
 
 async function answer(side, value) {
   const panel = game.locator(`.panel[data-side="${side}"]`);
+  const options = await panel.locator('.choice').allTextContents();
+  if (options.length) {
+    // Fácil: toca na opção; para errar de propósito, escolhe qualquer outra.
+    const right = options.findIndex((o) => Number(o) === value);
+    const index = right >= 0 ? right : options.findIndex((o) => Number(o) !== value - 1);
+    await tap(panel.locator('.choice').nth(index));
+    return;
+  }
   for (const digit of String(value)) {
     await tap(panel.locator(`.key[data-key="${digit}"]`));
     await sleep(140);
@@ -85,12 +93,12 @@ await tap(game.locator('[data-action="start"]'));
 
 // Partida: espera a contagem, erra uma vez (para mostrar o "Tente de novo!") e vence.
 const problem = game.locator('.panel[data-side="0"] .problem-text');
-await game.locator('.panel[data-side="0"] .key[data-key="1"]:not([disabled])').waitFor();
+await game.locator('.panel[data-side="0"] :is(.key, .choice):not([disabled])').first().waitFor();
 await sleep(500);
 let wrongShown = false;
 for (let i = 0; i < 30; i++) {
   if (!(await game.locator('#screen-match').isVisible())) break;
-  if (await game.locator('.panel[data-side="0"] .key[data-key="ok"][disabled]').count()) {
+  if (await game.locator('.panel[data-side="0"] :is(.key[data-key="ok"], .choice:not(.is-out))[disabled]').count()) {
     await sleep(150);
     continue;
   }

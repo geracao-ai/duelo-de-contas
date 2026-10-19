@@ -5,6 +5,7 @@ import { Game, averageTime } from './game.js';
 import { CpuPlayer } from './ai.js';
 import { Renderer } from './render.js';
 import { createKeypad } from './keypad.js';
+import { createChoices } from './choices.js';
 import * as audio from './audio.js';
 import * as stats from './stats.js';
 import {
@@ -232,8 +233,17 @@ function renderCards() {
   }
 }
 
+const usesChoices = (difficulty) => difficulty === 'facil';
+
+const DIFF_HINTS = {
+  facil: 'Fácil: toque na resposta certa entre 4 opções.',
+  medio: 'Médio: digite a resposta no teclado.',
+  dificil: 'Difícil: digite a resposta no teclado, com números maiores.',
+};
+
 function renderSetup() {
   const s = app.settings;
+  setText($('#diff-hint'), DIFF_HINTS[s.difficulty]);
   $$('#opt-mode .chip').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.value === s.mode)));
   $$('#opt-diff .chip').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.value === s.difficulty)));
   $$('#opt-ops .chip').forEach((b) => b.setAttribute('aria-pressed', String(s.ops.includes(b.dataset.value))));
@@ -284,8 +294,10 @@ function onSetupClick(event) {
 
 // ---------- partida ----------
 
-function buildPanel(side, info, withKeypad) {
-  const root = make('div', `panel${withKeypad ? '' : ' is-cpu'}`);
+/** `input`: 'keypad' (digitar), 'choices' (4 opções) ou null (computador). */
+function buildPanel(side, info, input) {
+  const human = input !== null;
+  const root = make('div', `panel${human ? '' : ' is-cpu'}`);
   root.dataset.side = String(side);
   root.style.setProperty('--accent', info.color);
   const head = make('div', 'panel-head');
@@ -296,12 +308,20 @@ function buildPanel(side, info, withKeypad) {
   const display = make('div', 'display');
   const problem = make('span', 'problem-text');
   const equals = make('span', '', '=');
-  const answer = make('span', `answer-box${withKeypad ? '' : ' is-cpu'}`);
+  const answer = make('span', `answer-box${human ? '' : ' is-cpu'}`);
   display.append(problem, equals, answer);
   const msg = make('div', 'msg');
   root.append(head, display, msg);
-  const panel = { side, root, problem, answer, msg, score, msgUntil: 0, keypad: null, note: null };
-  if (withKeypad) {
+  const panel = {
+    side, root, problem, answer, msg, score, msgUntil: 0, keypad: null, choices: null, note: null,
+  };
+  if (input === 'choices') {
+    panel.choices = createChoices({
+      playerLabel: info.tag,
+      onChoose: (index) => perform(side, 'choose', index),
+    });
+    root.appendChild(panel.choices.element);
+  } else if (input === 'keypad') {
     panel.keypad = createKeypad({
       playerLabel: info.tag,
       onDigit: (d) => perform(side, 'digit', d),
@@ -328,11 +348,17 @@ function startMatch() {
   const cpuMode = isCpuMode();
   const p2 = cpuMode ? randomItem(ANIMAL_IDS.filter((id) => id !== s.p1)) : s.p2;
   const info = playerInfo(cpuMode, s.p1, p2);
-  const game = new Game({ ops: s.ops, difficulty: s.difficulty, onEvent: handleGameEvent });
+  const choices = usesChoices(s.difficulty);
+  const game = new Game({
+    ops: s.ops, difficulty: s.difficulty, choices, onEvent: handleGameEvent,
+  });
   const cpu = cpuMode ? new CpuPlayer(s.difficulty) : null;
-  const panels = [buildPanel(0, info[0], true), buildPanel(1, info[1], !cpuMode)];
+  const input = choices ? 'choices' : 'keypad';
+  const panels = [buildPanel(0, info[0], input), buildPanel(1, info[1], cpuMode ? null : input)];
   $('#panels').replaceChildren(...panels.map((p) => p.root));
-  app.match = { game, cpu, info, panels, cpuMode, resultTimer: null, recorded: false };
+  app.match = {
+    game, cpu, info, panels, cpuMode, choices, resultTimer: null, recorded: false,
+  };
   app.paused = false;
   showScreen('match');
   announce(`Partida começando. ${info[0].tag} contra ${info[1].tag}.`);
@@ -421,7 +447,10 @@ function perform(side, type, digit) {
   if (!m || app.screen !== 'match' || app.paused) return;
   if (m.cpuMode && side === 1) return;
   const { game } = m;
-  if (type === 'digit') {
+  if (type === 'choose') {
+    const value = game.players[side].choices?.[digit];
+    if (value !== undefined) game.choose(side, value);
+  } else if (type === 'digit') {
     if (game.typeDigit(side, digit)) audio.playSfx('click');
   } else if (type === 'erase') {
     game.erase(side);
@@ -439,11 +468,12 @@ function updatePanels(now) {
     setText(panel.problem, player.problem ? player.problem.text : '');
     const typed = reveal ? String(reveal.answer) : player.input;
     let shown = typed;
-    if (!typed) shown = panel.keypad ? '?' : (m.cpu?.thinking ? '…' : '?');
+    if (!typed) shown = panel.note && m.cpu?.thinking ? '…' : '?';
     setText(panel.answer, shown);
     panel.answer.classList.toggle('is-reveal', Boolean(reveal));
     setText(panel.score, `Acertos: ${player.correct}`);
     panel.keypad?.setEnabled(game.canInput(panel.side));
+    panel.choices?.update(player.choices, player.eliminated, game.canInput(panel.side));
     if (panel.note) setText(panel.note, cpuNote(m.cpu));
     if (panel.msgUntil && now > panel.msgUntil) {
       panel.msgUntil = 0;
@@ -554,9 +584,16 @@ function renderMute() {
  * 1 jogador: linha de números/Backspace/Enter (e também o teclado numérico) controlam o jogador.
  * 2 jogadores: linha de números/Backspace/Enter = esquerda; teclado numérico
  * (Numpad0-9, NumpadEnter, NumpadDecimal para apagar) = direita.
+ * Múltipla escolha (Fácil): as teclas 1-4 escolhem a opção, com a mesma divisão de lados.
  */
-function keyToAction(event, twoPlayers) {
+function keyToAction(event, twoPlayers, choices) {
   const { code } = event;
+  if (choices) {
+    const match = /^(Digit|Numpad)([1-4])$/.exec(code);
+    if (!match) return null;
+    const side = match[1] === 'Numpad' && twoPlayers ? 1 : 0;
+    return { side, type: 'choose', digit: Number(match[2]) - 1 };
+  }
   if (code.startsWith('Numpad')) {
     const side = twoPlayers ? 1 : 0;
     if (/^Numpad\d$/.test(code)) return { side, type: 'digit', digit: code.slice(6) };
@@ -582,7 +619,7 @@ function onKeyDown(event) {
     pauseGame();
     return;
   }
-  const action = keyToAction(event, !app.match.cpuMode);
+  const action = keyToAction(event, !app.match.cpuMode, app.match.choices);
   if (!action) return;
   event.preventDefault();
   if (!event.repeat || action.type === 'erase') perform(action.side, action.type, action.digit);

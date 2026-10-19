@@ -4,7 +4,7 @@
 // Lado 0 = esquerda, lado 1 = direita.
 // A corda vai de -ropeMax a +ropeMax. Acerto do lado 0 puxa para -1; do lado 1, para +1.
 
-import { generateProblem, checkAnswer } from './problems.js';
+import { generateProblem, generateChoices, checkAnswer } from './problems.js';
 
 export const ROPE_MAX = 5;
 export const MAX_ATTEMPTS = 2;
@@ -20,6 +20,8 @@ export function createPlayer(side) {
     attempts: 0,
     problemStart: 0,
     reveal: null, // { answer, left } enquanto a resposta é mostrada
+    choices: null, // opções de resposta no modo de múltipla escolha
+    eliminated: [], // opções já tentadas (erradas) na conta atual
     correct: 0,
     wrong: 0,
     times: [],
@@ -37,12 +39,13 @@ export function averageTime(player) {
 export class Game {
   constructor({
     ops, difficulty, rng = Math.random, ropeMax = ROPE_MAX,
-    countdown = COUNTDOWN_SECONDS, onEvent = () => {},
+    countdown = COUNTDOWN_SECONDS, choices = false, onEvent = () => {},
   }) {
     this.ops = ops;
     this.difficulty = difficulty;
     this.rng = rng;
     this.ropeMax = ropeMax;
+    this.choices = choices;
     this.onEvent = onEvent;
     this.rope = 0;
     this.winner = null;
@@ -68,6 +71,8 @@ export class Game {
     player.input = '';
     player.attempts = 0;
     player.reveal = null;
+    player.choices = this.choices ? generateChoices(player.problem, this.rng) : null;
+    player.eliminated = [];
     player.problemStart = this.time;
     this.emit('problem', { side: player.side, problem: player.problem });
   }
@@ -116,6 +121,17 @@ export class Game {
     return checkAnswer(player.problem, player.input)
       ? this.onCorrect(player)
       : this.onWrong(player);
+  }
+
+  /** Responde tocando numa das opções (múltipla escolha). Mesmo retorno de submit(). */
+  choose(side, value) {
+    if (!this.canInput(side)) return null;
+    const player = this.players[side];
+    if (!player.choices?.includes(value) || player.eliminated.includes(value)) return null;
+    player.input = String(value);
+    const result = this.submit(side);
+    if (result === 'wrong') player.eliminated.push(value);
+    return result;
   }
 
   opStats(player, op) {
