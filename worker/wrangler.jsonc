@@ -1,0 +1,12 @@
+{
+  // O nome precisa ser igual ao do Worker no painel da Cloudflare.
+  "name": "duelo-de-contas",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-01",
+  "workers_dev": true,
+  "durable_objects": {
+    "bindings": [{ "name": "SALAS", "class_name": "Sala" }]
+  },
+  // Plano grátis exige Durable Objects com SQLite.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Sala"] }]
+}
