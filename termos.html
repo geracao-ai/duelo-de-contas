@@ -25,7 +25,7 @@
     <h2>O que coletamos</h2>
     <p>Para saber o que melhorar no jogo, enviamos estatísticas anônimas:</p>
     <ul>
-      <li>dados da partida: modo (contra o computador ou 2 jogadores), nível, operações escolhidas, acertos e erros (por operação), duração, tempo médio de resposta, uso dos óculos e o bichinho escolhido;</li>
+      <li>dados da partida: modo (contra o computador, 2 jogadores ou online), nível, operações escolhidas, acertos e erros (por operação), duração, tempo médio de resposta, uso dos óculos e o bichinho escolhido;</li>
       <li>tipo de aparelho, sistema, navegador e página aberta;</li>
       <li>país e estado aproximados, calculados a partir do endereço de rede <strong>antes</strong> de ele ser descartado;</li>
       <li>uma contagem de visitas por dia e por mês, feita <strong>sem nenhum identificador</strong>: o jogo só guarda neste aparelho a data da última visita.</li>
@@ -59,9 +59,22 @@
       “Zerar estatísticas” dentro do jogo ou limpe os dados do site nas configurações do navegador.
     </p>
 
+    <h2>Duelo online com um amigo</h2>
+    <p>
+      Em “Desafiar um amigo”, duas pessoas jogam em aparelhos diferentes. Quem cria a sala recebe um PIN de 6 números
+      e o passa ao amigo (ou manda o link). Para isso:
+    </p>
+    <ul>
+      <li>não há nomes, contas nem chat: durante a sala passam pelo servidor (na Cloudflare) apenas o bichinho escolhido, as operações e o nível, e os acertos, erros e óculos de cada jogador;</li>
+      <li>nada disso é guardado depois que a sala fecha: o servidor só mantém a sala na memória enquanto ela está aberta;</li>
+      <li>o PIN só funciona enquanto a sala estiver aberta. Salas paradas por muito tempo são encerradas;</li>
+      <li>as estatísticas anônimas descritas acima também contam essas partidas (modo “online”), sem o PIN.</li>
+    </ul>
+
     <h2>Crianças</h2>
     <p>
-      Não pedimos cadastro, não há chat, não há contato com outros jogadores e não há anúncios.
+      Não pedimos cadastro, não há chat e não há anúncios. O único contato com outra criança é o duelo
+      online com um amigo, descrito acima, sem nomes e sem mensagens.
       Recomendamos que um adulto acompanhe as crianças menores.
     </p>
 

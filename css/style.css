@@ -82,6 +82,7 @@ html, body {
 }
 .btn-green { --c: var(--green); --cd: var(--green-dark); }
 .btn-blue { --c: var(--blue); --cd: var(--blue-dark); }
+.btn-purple { --c: #6b2fb3; --cd: #3f1b6b; }
 .btn-red { --c: var(--red); --cd: var(--red-dark); }
 .btn-yellow { --c: var(--yellow); --cd: var(--yellow-dark); color: var(--ink); }
 .btn-gray { --c: var(--gray); --cd: var(--gray-dark); }
@@ -368,3 +369,81 @@ html:has(body.legal) { overflow: auto; height: auto; }
 .legal-back a { display: inline-block; padding: 6px 14px; border-radius: 99px; background: var(--paper); color: var(--ink); font-weight: 800; }
 .optout-box { background: #fff; border: 3px solid var(--ink); border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
 .optout-status { font-weight: 800; }
+
+/* ---------- duelo online ---------- */
+.online-card { width: min(440px, 100%); }
+.online-card .btn { width: 100%; }
+.lobby-card, .join-card { width: min(560px, 100%); text-align: center; }
+.join-stage { display: flex; flex-direction: column; gap: 12px; }
+.pin-digits { display: flex; justify-content: center; gap: clamp(4px, 1.6vw, 10px); }
+.pin-digit {
+  display: grid; place-items: center; width: clamp(40px, 11vw, 64px); height: clamp(56px, 15vw, 84px);
+  font-size: clamp(2rem, 8vw, 3.4rem); font-weight: 900; color: var(--ink);
+  background: #fff; border: 4px solid var(--ink); border-radius: 16px; box-shadow: 0 4px 0 rgba(43, 31, 58, 0.4);
+}
+.pin-digit.is-empty { color: var(--ink-soft); opacity: 0.6; }
+.is-input .pin-digit.is-next { border-color: var(--green); box-shadow: 0 0 0 4px #b8f0cc; }
+.join-card .keypad { width: min(360px, 100%); margin: 0 auto; }
+.join-card .key { min-height: 60px; }
+.lobby-slots { display: flex; justify-content: center; gap: clamp(12px, 5vw, 48px); }
+.lobby-slot { display: flex; flex-direction: column; align-items: center; min-width: 0; flex: 1 1 0; max-width: 220px; font-weight: 800; }
+.lobby-slot canvas { width: 132px; height: 132px; max-width: 100%; }
+.lobby-slot b { font-size: 1.1rem; }
+.lobby-slot span { color: var(--ink-soft); }
+.lobby-slot.is-here span { color: var(--green); }
+.lobby-slot:first-child b { color: var(--p0); }
+.lobby-slot:last-child b { color: var(--p1); }
+#invite-note { min-height: 1.4em; }
+
+/* partida online: só o painel de "você" e uma etiqueta do amigo */
+.match.online .panels { justify-content: center; }
+.match.online .panel { flex: 0 1 min(780px, 100%); }
+.friend-tag {
+  position: absolute; top: 72px; right: 8px; z-index: 2; display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+  padding: 6px 14px; background: rgba(255, 255, 255, 0.93); border: 3px solid var(--ink);
+  border-right: 8px solid var(--accent); border-radius: 18px; font-weight: 900; color: var(--accent);
+  pointer-events: none;
+}
+.friend-tag .friend-score { color: var(--ink); font-size: 0.95rem; }
+.friend-status { color: var(--ink-soft); font-size: 0.9rem; min-height: 1.2em; }
+.friend-status.good { color: var(--green); }
+.friend-status.bad { color: var(--red); }
+.friend-tag.shake { animation: shake 0.4s; }
+.match.side.online .panels { justify-content: flex-start; }
+.match.side.online .panel { flex: 0 0 clamp(300px, 46vw, 440px); }
+.match.side.online .panel-animal, .match.side.online .panel-score { display: inline; }
+.match.side.online .keypad { grid-template-columns: repeat(6, 1fr); }
+.match.side.online .key { min-height: 52px; font-size: 1.3rem; }
+.match.side.online .key-erase { font-size: 0.85rem; }
+.match.side.online .hud { left: calc(clamp(300px, 46vw, 440px) + 70px); transform: none; }
+
+@media (max-height: 520px) and (min-width: 600px) {
+  #screen-menu { padding-top: 8px; gap: 8px; }
+  #screen-menu .stack { display: grid; grid-template-columns: 1fr 1fr; width: min(640px, 100%); gap: 10px; }
+  #screen-menu .btn-xl { min-height: 56px; }
+  .pin-digit { height: 52px; }
+  .lobby-slot canvas { width: 96px; height: 96px; }
+}
+.lobby-body { display: flex; flex-direction: column; gap: 12px; }
+.lobby-left, .lobby-right { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.pin-digit { line-height: 1; padding: 0; }
+
+/* celular deitado: tudo cabe em 390 px de altura, sem rolar */
+@media (max-height: 520px) {
+  .card { padding: 10px 16px; gap: 8px; }
+  .card h2 { font-size: 1.4rem; }
+  .online-card .btn-xl { min-height: 52px; }
+  .lobby-card { width: min(760px, 100%); }
+  .lobby-body { flex-direction: row; align-items: center; gap: 16px; }
+  .lobby-left, .lobby-right { flex: 1 1 0; }
+  .lobby-slot canvas { width: 84px; height: 84px; }
+  .lobby-slot span { font-size: 0.9rem; }
+  .lobby-card .hint, .join-card .hint { font-size: 0.95rem; }
+  .pin-digit { width: 36px; height: 48px; font-size: 1.9rem; border-width: 3px; border-radius: 12px; }
+  .join-card .keypad { grid-template-columns: repeat(6, 1fr); width: 100%; }
+  .join-card .key { min-height: 50px; font-size: 1.3rem; }
+  .join-card .key-erase { font-size: 0.8rem; }
+  #cards-guest { grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  #cards-guest .char-card canvas { width: 56px; height: 56px; }
+  #cards-guest .char-card { font-size: 0.8rem; padding: 2px; }
+}

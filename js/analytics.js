@@ -90,9 +90,10 @@ function loadVisitRecord(storage) {
 
 const round1 = (value) => Math.round(value * 10) / 10;
 
-export function matchProps(settings, cpuMode, input, animal) {
+/** `modo`: true/'cpu' (contra o computador), false/'2p' ou 'online'. */
+export function matchProps(settings, modo, input, animal) {
   const props = {
-    modo: cpuMode ? 'cpu' : '2p',
+    modo: modo === 'online' ? 'online' : (modo === true || modo === 'cpu' ? 'cpu' : '2p'),
     nivel: settings.difficulty,
     entrada: input === 'choices' ? 'opcoes' : 'teclado',
   };
@@ -134,12 +135,15 @@ export function abandonProps(base, humans, seconds) {
 
 /**
  * Propriedades de `partida_terminada`. `humans`: jogadores humanos (1 contra o
- * computador, 2 em 2 jogadores). `winner`: lado vencedor (0 ou 1).
+ * computador e online, 2 em 2 jogadores). `winner`: lado vencedor (0 ou 1; null se o amigo saiu).
  */
 export function finishProps(base, humans, { winner, seconds, glassesActivations = 0 }) {
   const { total, mean } = tally(humans);
   let resultado;
-  if (base.modo === 'cpu') resultado = winner === 0 ? 'vitoria' : 'derrota';
+  if (base.modo === 'online') {
+    // lado 0 = este aparelho; vencedor null = o amigo saiu
+    resultado = winner === null ? 'amigo_saiu' : (winner === 0 ? 'vitoria' : 'derrota');
+  } else if (base.modo === 'cpu') resultado = winner === 0 ? 'vitoria' : 'derrota';
   else resultado = winner === 0 ? 'vencedor_j1' : 'vencedor_j2';
   return {
     ...base,
@@ -215,3 +219,14 @@ export function track(event, props = {}, { beacon = false } = {}) {
 }
 
 export const isActive = () => active;
+
+// ---------- duelo online (propriedades fixas, sem PIN nem texto livre) ----------
+
+/** Propriedades de `sala_criada`: o que o anfitrião configurou. */
+export function salaCriadaProps(settings) {
+  const { modo, ...props } = matchProps(settings, 'online', settings.difficulty === 'facil' ? 'choices' : 'keypad', settings.p1);
+  return props;
+}
+
+/** Propriedades de `sala_erro`: só o código do erro (ou `conexao`). */
+export const salaErroProps = (codigo) => ({ codigo: String(codigo) });

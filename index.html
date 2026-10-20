@@ -38,7 +38,8 @@
       <p class="tagline">O cabo de guerra da matemática!</p>
       <div class="stack">
         <button class="btn btn-green btn-xl" type="button" data-action="play-cpu" aria-label="Jogar contra o computador">Contra o computador</button>
-        <button class="btn btn-blue btn-xl" type="button" data-action="play-2p" aria-label="Jogar com dois jogadores">2 jogadores</button>
+        <button class="btn btn-blue btn-xl" type="button" data-action="play-2p" aria-label="Dois jogadores neste aparelho">2 jogadores aqui</button>
+        <button class="btn btn-purple btn-xl" type="button" data-action="online" aria-label="Desafiar um amigo em outro aparelho">Desafiar um amigo</button>
         <button class="btn btn-yellow btn-xl" type="button" data-action="stats" aria-label="Ver estatísticas">Estatísticas</button>
       </div>
       <a class="privacy-link" href="termos.html">Privacidade e termos</a>
@@ -49,7 +50,7 @@
       <div class="card setup-card">
         <h2 id="setup-title">Prepare o duelo</h2>
 
-        <div class="field">
+        <div class="field" id="field-mode">
           <h3 id="lbl-mode">Modo</h3>
           <div class="chips" role="radiogroup" aria-labelledby="lbl-mode" id="opt-mode">
             <button class="chip" type="button" role="radio" data-value="cpu">Contra o computador</button>
@@ -89,9 +90,76 @@
         <p class="hint" id="cpu-hint">O computador escolhe um bichinho diferente do seu, sorteado na hora.</p>
 
         <div class="row">
-          <button class="btn btn-gray" type="button" data-action="menu" aria-label="Voltar ao menu">Voltar</button>
-          <button class="btn btn-green btn-lg" type="button" data-action="start" aria-label="Começar a partida">Começar!</button>
+          <button class="btn btn-gray" type="button" id="btn-setup-back" data-action="menu" aria-label="Voltar ao menu">Voltar</button>
+          <button class="btn btn-green btn-lg" type="button" id="btn-setup-start" data-action="start" aria-label="Começar a partida">Começar!</button>
         </div>
+      </div>
+    </section>
+
+    <!-- Desafiar um amigo -->
+    <section id="screen-online" class="screen" aria-labelledby="online-title" hidden>
+      <div class="card online-card">
+        <h2 id="online-title">Desafiar um amigo</h2>
+        <p class="hint">Cada um joga no seu aparelho, com as mesmas contas!</p>
+        <button class="btn btn-green btn-xl" type="button" data-action="online-create" aria-label="Criar uma sala">Criar sala</button>
+        <button class="btn btn-blue btn-xl" type="button" data-action="online-join" aria-label="Entrar numa sala com o PIN">Entrar com PIN</button>
+        <button class="btn btn-gray" type="button" data-action="menu" aria-label="Voltar ao menu">Voltar</button>
+      </div>
+    </section>
+
+    <!-- Sala de espera (quem criou a sala) -->
+    <section id="screen-lobby" class="screen" aria-labelledby="lobby-title" hidden>
+      <div class="card lobby-card">
+        <h2 id="lobby-title">Sua sala</h2>
+        <div class="lobby-body">
+          <div class="lobby-left">
+            <p class="hint" id="lobby-pin-label">Passe este PIN para o seu amigo:</p>
+            <div class="pin-digits" id="lobby-pin" role="img" aria-label="PIN ainda não disponível"></div>
+            <div class="row">
+              <button class="btn btn-blue" type="button" id="btn-invite" data-action="online-invite" aria-label="Enviar convite para o seu amigo" disabled>Enviar convite</button>
+            </div>
+            <p class="hint" id="invite-note" role="status" aria-live="polite"></p>
+          </div>
+          <div class="lobby-right">
+            <div class="lobby-slots">
+              <div class="lobby-slot" id="slot-host"><canvas aria-hidden="true"></canvas><b>Você</b><span id="slot-host-name"></span></div>
+              <div class="lobby-slot" id="slot-guest" aria-live="polite"><canvas aria-hidden="true"></canvas><b id="slot-guest-tag">Seu amigo</b><span id="slot-guest-name">Esperando seu amigo…</span></div>
+            </div>
+            <div class="row">
+              <button class="btn btn-gray" type="button" data-action="online-leave" aria-label="Sair da sala">Sair</button>
+              <button class="btn btn-green btn-lg" type="button" id="btn-lobby-start" data-action="online-start" aria-label="Começar a partida" disabled>Começar!</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Entrar com PIN (convidado) -->
+    <section id="screen-join" class="screen" aria-labelledby="join-title" hidden>
+      <div class="card join-card">
+        <h2 id="join-title">Entrar com PIN</h2>
+        <div id="join-pin-stage" class="join-stage">
+          <p class="hint" id="join-pin-label">Digite o PIN que seu amigo mandou:</p>
+          <div class="pin-digits is-input" id="join-pin" role="img" aria-label="Nenhum número digitado"></div>
+          <div id="join-keypad-slot"></div>
+          <div class="row">
+            <button class="btn btn-gray" type="button" data-action="online" aria-label="Voltar">Voltar</button>
+            <button class="btn btn-green btn-lg" type="button" id="btn-join-go" data-action="online-join-go" aria-label="Entrar na sala" disabled>Entrar</button>
+          </div>
+        </div>
+        <div id="join-room-stage" class="join-stage" hidden>
+          <p class="hint" id="join-room-info"></p>
+          <div class="field">
+            <h3 id="lbl-guest">Escolha seu bichinho</h3>
+            <div class="cards" id="cards-guest" role="group" aria-labelledby="lbl-guest"></div>
+          </div>
+          <p class="hint" id="join-wait" role="status" aria-live="polite" hidden>Esperando seu amigo começar…</p>
+          <div class="row">
+            <button class="btn btn-gray" type="button" data-action="online-leave" aria-label="Sair da sala">Sair</button>
+            <button class="btn btn-green btn-lg" type="button" id="btn-ready" data-action="online-ready" aria-label="Estou pronto">Estou pronto!</button>
+          </div>
+        </div>
+        <p class="hint" id="join-status" role="status" aria-live="polite" hidden></p>
       </div>
     </section>
 
@@ -118,8 +186,9 @@
             <tbody id="result-rows"></tbody>
           </table>
         </div>
+        <p class="hint" id="result-note" role="status" aria-live="polite" hidden></p>
         <div class="row">
-          <button class="btn btn-green btn-lg" type="button" data-action="again" aria-label="Jogar de novo">Jogar de novo</button>
+          <button class="btn btn-green btn-lg" type="button" id="btn-again" data-action="again" aria-label="Jogar de novo">Jogar de novo</button>
           <button class="btn btn-blue" type="button" data-action="menu" aria-label="Voltar ao menu">Menu</button>
         </div>
       </div>
