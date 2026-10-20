@@ -148,4 +148,4 @@ Com o conector **Cloudflare API**:
 - [x] Durable Object no Worker e permissão de acesso do jogo (`duelo-de-contas.pages.dev`) ao
       Worker (lista de `Origin` em `worker/src/origem.js`).
 - [x] Worker: *Root directory* `worker` e comandos da tabela acima (ajustados pela API).
-- [ ] Testar o duelo online em dois aparelhos reais depois do merge.
+- [x] Duelo online testado em dois aparelhos reais depois do merge (2026-10-20): funcionou.
