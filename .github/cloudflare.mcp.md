@@ -3,6 +3,17 @@
 > Este arquivo **não contém segredos**. Não há tokens da Cloudflare no repositório nem nos
 > segredos do GitHub: a publicação é feita pela **integração Git da própria Cloudflare**.
 
+## Requisitos
+
+| Item | Valor |
+| --- | --- |
+| Conector MCP | **Cloudflare API**, URL `https://mcp.cloudflare.com/mcp` (repositório [`cloudflare/mcp`](https://github.com/cloudflare/mcp)) |
+| Login | OAuth com a conta da Cloudflare (sem token de API guardado) |
+| Ferramentas | `search` (acha o endpoint na especificação da API), `execute` (chama a API), `docs`, `whoami` |
+
+Não use o conector antigo "Cloudflare Developer Platform" (Workers Bindings): ele está
+descontinuado e não lê nem altera builds, logs ou o Pages.
+
 ## Visão geral
 
 | Item | Valor |
