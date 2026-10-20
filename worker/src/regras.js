@@ -84,7 +84,9 @@ export function alarme(state, agora) {
   if (!state) return { state: null, send: [], close: [0, 1] };
   const s = structuredClone(state);
   avancar(s, agora);
-  if (agora >= s.atividade + OCIOSA_MS) return { state: null, send: [], close: [0, 1] };
+  if (agora >= s.atividade + OCIOSA_MS) {
+    return { state: null, send: [{ to: 'todos', msg: { t: 'erro', codigo: 'ociosa' } }], close: [0, 1] };
+  }
   return vazio(s);
 }
 
@@ -109,15 +111,13 @@ export function sair(state, lado, agora) {
   if (s.estado === 'espera') {
     s.jogadores[1] = null;
     send.push({ to: outro, msg: msgSala(s, 0) }, { to: outro, msg: { t: 'saiu', lado: 1 } });
-  } else {
-    send.push({ to: outro, msg: { t: 'saiu', lado: 1 } });
-    if (noMeio) send.push({ to: outro, msg: { t: 'fim', vencedor: null, motivo: 'saiu' } });
-    // Vaga liberada: a sala volta a esperar um convidado.
-    s.jogadores[1] = null;
-    s.estado = 'espera';
-    zeraPartida(s);
+    return { state: s, send, close: [] };
   }
-  return { state: s, send, close: [] };
+  // Depois que a partida começou, a sala fecha: o anfitrião já está no resultado
+  // e um convidado que voltasse pelo link ficaria esperando para sempre.
+  send.push({ to: outro, msg: { t: 'saiu', lado: 1 } });
+  if (noMeio) send.push({ to: outro, msg: { t: 'fim', vencedor: null, motivo: 'saiu' } });
+  return { state: null, send, close: [0] };
 }
 
 // Trata uma mensagem recebida (texto cru). `agora` em ms (injetável para testes).
@@ -177,7 +177,8 @@ export function tratar(state, lado, texto, agora, opcoes = {}) {
       if (lado !== 1) return erro(s, lado, 'mensagem-invalida');
       if (m.v !== VERSAO) return erro(s, lado, 'versao', true);
       if (!BICHINHOS.includes(m.bichinho)) return erro(s, lado, 'mensagem-invalida');
-      if (conv || s.estado !== 'espera') return erro(s, lado, 'sala-cheia', true);
+      if (lado === 1 && conv) return vazio(s); // `entrar` repetido de quem já está na sala
+      if (s.estado !== 'espera') return erro(s, lado, 'sala-cheia', true);
       if (m.bichinho === s.jogadores[0].bichinho) return erro(s, lado, 'bichinho-igual');
       s.jogadores[1] = { bichinho: m.bichinho, pronto: false };
       return { state: s, send: enviarSala(s), close: [] };

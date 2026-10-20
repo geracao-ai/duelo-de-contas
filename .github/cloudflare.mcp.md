@@ -88,6 +88,14 @@ Limites do plano grátis: Durable Objects só com SQLite; 100 mil requisições/
 mensagem de WebSocket conta 1/20 de requisição para o Durable Object); sem armazenamento usado.
 Mensagens acima de 1 KB são recusadas.
 
+Riscos aceitos (por enquanto):
+
+- O `Origin` só barra navegadores: um script pode testar PINs ou gastar a cota diária. Se isso
+  acontecer, criar uma regra de *Rate limiting* na Cloudflare para `/ws` (não exige código).
+- **Prévias do Worker:** `wrangler versions upload` pode recusar uma versão com migração de Durable
+  Object ainda não aplicada. Até o primeiro `wrangler deploy` da `main`, a prévia de PRs que mexem
+  em `worker/` pode falhar; depois disso, só falha se uma nova migração for adicionada.
+
 Testes: `npm test` (regras e Origin) e, com `cd worker && npm ci && npx wrangler dev`, o teste de
 ponta a ponta `node tools/online/smoke.mjs`.
 

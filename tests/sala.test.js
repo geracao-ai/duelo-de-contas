@@ -143,6 +143,7 @@ test('alarme encerra sala parada há 30 minutos', () => {
   const r = alarme(x.state, x.now + OCIOSA_MS);
   assert.equal(r.state, null);
   assert.deepEqual(r.close, [0, 1]);
+  assert.deepEqual(r.send, [{ to: 'todos', msg: { t: 'erro', codigo: 'ociosa' } }]);
   assert.equal(alarme(x.state, x.now + OCIOSA_MS - 1).state.estado, 'espera');
   assert.equal(proximoAlarme(x.state), x.now + OCIOSA_MS);
 });
@@ -389,13 +390,14 @@ test('saída durante a contagem também é fim saiu', () => {
   assert.deepEqual(x.recebidas[0].map((m) => m.t), ['saiu', 'fim']);
 });
 
-test('convidado sai no meio: a sala volta à espera com a vaga livre', () => {
+test('convidado sai no meio: a sala fecha e o anfitrião é desconectado', () => {
   const x = jogando();
+  x.limpa();
   x.sai(1);
-  assert.equal(x.state.estado, 'espera');
-  assert.equal(x.state.jogadores[1], null);
-  assert.equal(podeEntrar(x.state), null);
-  assert.equal(x.state.corda, 0);
+  assert.deepEqual(x.recebidas[0].map((m) => m.t), ['saiu', 'fim']);
+  assert.equal(x.state, null);
+  assert.deepEqual(x.fechados, [0]);
+  assert.equal(podeEntrar(x.state), 'sala-inexistente');
 });
 
 test('convidado sai depois do fim: só saiu', () => {
@@ -428,12 +430,13 @@ test('anfitrião sai sem convidado: sala fecha sem mensagens', () => {
   assert.equal(x.recebidas[1].length, 0);
 });
 
-test('entrar com sala já ocupada devolve sala-cheia e fecha', () => {
+test('entrar repetido de quem já está na sala é ignorado', () => {
   const x = salaPronta();
   x.limpa();
   x.envia(1, ENTRAR);
-  assert.deepEqual(x.ultima(1), { t: 'erro', codigo: 'sala-cheia' });
-  assert.deepEqual(x.fechados, [1]);
+  assert.equal(x.recebidas[1].length, 0);
+  assert.deepEqual(x.fechados, []);
+  assert.equal(x.state.jogadores[1].pronto, true);
 });
 
 test('as funções não alteram o estado recebido', () => {

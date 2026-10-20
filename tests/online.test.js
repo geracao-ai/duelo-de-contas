@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createRng } from '../js/rng.js';
 import { Game } from '../js/game.js';
 import {
-  SERVIDOR_PADRAO, servidorDaUrl, wsUrl, pinDaUrl, conviteUrl, conviteTexto, erroTexto, conectar, PING_MS,
+  SERVIDOR_PADRAO, servidorDaUrl, wsUrl, pinDaUrl, conviteUrl, conviteTexto, erroTexto, conectar, PING_MS, SEM_PONG_MS, salaValida,
 } from '../js/online.js';
 import { matchProps, finishProps, salaCriadaProps, salaErroProps } from '../js/analytics.js';
 import { emptyStats, recordMatch } from '../js/stats.js';
@@ -143,9 +143,13 @@ test('sem remoteRope o jogo local segue igual (corda e vitória locais)', () => 
 // ---------- endereços ----------
 
 test('servidor: padrão e ?servidor=, convertido para ws(s)', () => {
-  assert.equal(servidorDaUrl(''), SERVIDOR_PADRAO);
-  assert.equal(servidorDaUrl('?servidor=lixo'), SERVIDOR_PADRAO);
-  assert.equal(servidorDaUrl('?servidor=http://localhost:8787/'), 'http://localhost:8787');
+  assert.equal(servidorDaUrl('', 'localhost'), SERVIDOR_PADRAO);
+  assert.equal(servidorDaUrl('?servidor=lixo', 'localhost'), SERVIDOR_PADRAO);
+  assert.equal(servidorDaUrl('?servidor=http://localhost:8787/', 'localhost'), 'http://localhost:8787');
+  assert.equal(servidorDaUrl('?servidor=http://localhost:8787', '127.0.0.1'), 'http://localhost:8787');
+  // em produção, um link não troca o servidor
+  assert.equal(servidorDaUrl('?servidor=https://evil.example', 'duelo-de-contas.pages.dev'), SERVIDOR_PADRAO);
+  assert.equal(servidorDaUrl('?servidor=https://evil.example'), SERVIDOR_PADRAO);
   assert.equal(wsUrl('https://x.workers.dev'), 'wss://x.workers.dev/ws?criar=1');
   assert.equal(wsUrl('http://localhost:8787', { pin: '482913' }), 'ws://localhost:8787/ws?pin=482913');
 });
@@ -166,7 +170,19 @@ test('textos de erro para crianças', () => {
   assert.equal(erroTexto('versao'), 'Atualize a página para jogar junto');
   assert.equal(erroTexto('conexao'), 'Não deu para conectar. Confira a internet e tente de novo.');
   assert.equal(erroTexto('saiu'), 'Seu amigo saiu da sala.');
+  assert.equal(erroTexto('ociosa'), 'A sala fechou porque ficou parada muito tempo.');
   assert.equal(erroTexto('qualquer-coisa'), erroTexto('conexao'));
+});
+
+test('salaValida recusa nível, operação ou bichinho desconhecidos', () => {
+  const ok = { voce: 1, nivel: 'medio', ops: ['add', 'div'], jogadores: [{ bichinho: 'urso' }, null] };
+  assert.equal(salaValida(ok), true);
+  assert.equal(salaValida({ ...ok, nivel: 'impossivel' }), false);
+  assert.equal(salaValida({ ...ok, ops: [] }), false);
+  assert.equal(salaValida({ ...ok, ops: ['pow'] }), false);
+  assert.equal(salaValida({ ...ok, jogadores: [{ bichinho: 'dragao' }, null] }), false);
+  assert.equal(salaValida({ ...ok, voce: 2 }), false);
+  assert.equal(salaValida(null), false);
 });
 
 // ---------- conexão com soquete falso ----------
@@ -201,7 +217,7 @@ function fakeRelogio() {
   return r;
 }
 
-function abrir() {
+function abrir(agora = () => 0) {
   const relogio = fakeRelogio();
   const eventos = [];
   const con = conectar({
@@ -213,6 +229,7 @@ function abrir() {
     onFechou: () => eventos.push(['fechou']),
     setIntervalFn: relogio.set,
     clearIntervalFn: relogio.clear,
+    agora,
   });
   return {
     con, relogio, eventos, socket: FakeSocket.ultimo,
@@ -232,6 +249,22 @@ test('ao abrir envia a 1ª mensagem em JSON e agenda o ping de 20 s', () => {
   assert.deepEqual(socket.enviadas[1], { t: 'ping' });
   assert.equal(con.enviar('acertei', { n: 3 }), true);
   assert.deepEqual(socket.enviadas[2], { t: 'acertei', n: 3 });
+});
+
+test('sem nenhuma resposta do servidor por 45 s a conexão é dada como caída', () => {
+  let t = 0;
+  const { socket, relogio, eventos } = abrir(() => t);
+  socket.abrir();
+  t = 40000;
+  relogio.fn();
+  socket.receber({ t: 'pong' });
+  t = 40000 + SEM_PONG_MS;
+  relogio.fn();
+  assert.deepEqual(eventos.filter((e) => e[0] !== 'msg'), []);
+  t += 1;
+  relogio.fn();
+  assert.deepEqual(eventos.at(-1), ['fechou']);
+  assert.equal(socket.readyState, 3);
 });
 
 test('mensagens JSON válidas chegam ao callback; lixo é ignorado', () => {

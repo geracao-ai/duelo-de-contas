@@ -3,3 +3,4 @@ worker/node_modules/
 worker/.wrangler/
 .DS_Store
 dist/
+shots-online/

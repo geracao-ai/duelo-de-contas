@@ -15,7 +15,7 @@ import {
 } from './analytics.js';
 import { createRng } from './rng.js';
 import {
-  conectar, wsUrl, servidorDaUrl, pinDaUrl, conviteUrl, conviteTexto, erroTexto,
+  conectar, wsUrl, servidorDaUrl, salaValida, pinDaUrl, conviteUrl, conviteTexto, erroTexto,
   PROTOCOLO_VERSAO, PIN_TAMANHO,
 } from './online.js';
 import {
@@ -421,7 +421,7 @@ function updateBoard(panel, player) {
   board.height = Math.round(h * dpr);
   const ctx = board.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  drawHelpBoard(ctx, w, h, fitLayout(buildHelpModel(player.problem, app.settings.difficulty), w, h));
+  drawHelpBoard(ctx, w, h, fitLayout(buildHelpModel(player.problem, app.match.game.difficulty), w, h));
   board.classList.remove('pop');
   void board.offsetWidth; // reinicia a animação de entrada
   board.classList.add('pop');
@@ -561,7 +561,7 @@ function onGlasses({ side, on }) {
   if (on) {
     m.glassesCount += 1;
     const op = m.game.players[side].problem?.op;
-    track('oculos_ligados', { nivel: app.settings.difficulty, op: OP_EVENT_NAMES[op] });
+    track('oculos_ligados', { nivel: m.game.difficulty, op: OP_EVENT_NAMES[op] });
   }
   const panel = m.panels[side];
   panel.glassesButton?.setAttribute('aria-pressed', String(on));
@@ -879,7 +879,7 @@ function frame(now) {
 // Lado local: "você" é sempre o lado 0 (esquerda, azul) nos dois aparelhos. O servidor numera
 // os lados pelo papel na sala (0 = anfitrião, 1 = convidado), então o convidado inverte a corda.
 
-const serverBase = () => servidorDaUrl(globalThis.location?.search ?? '');
+const serverBase = () => servidorDaUrl(globalThis.location?.search ?? '', globalThis.location?.hostname ?? '');
 
 function sendOnline(type, fields) {
   app.online?.conn?.enviar(type, fields);
@@ -979,6 +979,10 @@ function chooseGuestAnimal(id) {
 
 function onSala(msg) {
   const o = app.online;
+  if (!salaValida(msg)) {
+    showOnlineError('mensagem-invalida');
+    return;
+  }
   const first = !o.sala;
   const before = o.sala;
   o.sala = msg;

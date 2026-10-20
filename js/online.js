@@ -1,9 +1,13 @@
 // Camada de conexão do duelo online (WebSocket). Sem DOM: o construtor do WebSocket
 // é injetável, então os testes usam um soquete falso. Protocolo: ver a issue #18.
 
+import { OPERATIONS, DIFFICULTIES } from './problems.js';
+import { ANIMAL_IDS } from './characters.js';
+
 export const SERVIDOR_PADRAO = 'https://duelo-de-contas.danieldopulo.workers.dev';
 export const PROTOCOLO_VERSAO = 1;
 export const PING_MS = 20000;
+export const SEM_PONG_MS = 45000; // sem resposta do servidor por esse tempo: a conexão caiu
 export const PIN_TAMANHO = 6;
 
 /** Textos para crianças, por código de erro (os do servidor mais `conexao` e `saiu`). */
@@ -15,14 +19,27 @@ export const ERRO_TEXTOS = {
   saiu: 'Seu amigo saiu da sala.',
   'bichinho-igual': 'Esse bichinho já foi escolhido pelo seu amigo. Escolha outro!',
   'mensagem-invalida': 'Algo deu errado. Vamos tentar de novo.',
+  ociosa: 'A sala fechou porque ficou parada muito tempo.',
 };
 
 export const erroTexto = (codigo) => ERRO_TEXTOS[codigo] ?? ERRO_TEXTOS.conexao;
 
-/** Servidor a usar: `?servidor=http://localhost:8787` na página, senão o padrão. */
-export function servidorDaUrl(search = '') {
+/**
+ * Servidor a usar: o padrão, ou `?servidor=http://localhost:8787` — só quando a própria página
+ * está em localhost (testes). Em produção um link não pode mandar a criança para outro servidor.
+ */
+export function servidorDaUrl(search = '', hostname = '') {
+  if (!/^(localhost|127\.0\.0\.1)$/.test(hostname)) return SERVIDOR_PADRAO;
   const valor = new URLSearchParams(search).get('servidor');
   return valor && /^https?:\/\/[^\s/]+/.test(valor) ? valor.replace(/\/+$/, '') : SERVIDOR_PADRAO;
+}
+
+/** Confere a mensagem `sala` antes de montar a partida (nível, operações e bichinhos conhecidos). */
+export function salaValida(sala) {
+  if (!sala || ![0, 1].includes(sala.voce) || !DIFFICULTIES.includes(sala.nivel)) return false;
+  if (!Array.isArray(sala.ops) || !sala.ops.length || !sala.ops.every((op) => OPERATIONS.includes(op))) return false;
+  if (!Array.isArray(sala.jogadores) || sala.jogadores.length !== 2) return false;
+  return sala.jogadores.every((j) => j === null || ANIMAL_IDS.includes(j?.bichinho));
 }
 
 /** Converte a base http(s) em ws(s) e monta `/ws?criar=1` ou `/ws?pin=NNNNNN`. */
@@ -58,12 +75,13 @@ export const conviteTexto = (pin) => `Vem me desafiar no Duelo de Contas! PIN ${
 export function conectar({
   url, inicial = null, WebSocketCtor = globalThis.WebSocket,
   onMensagem = () => {}, onFalha = () => {}, onFechou = () => {},
-  setIntervalFn = globalThis.setInterval, clearIntervalFn = globalThis.clearInterval,
+  setIntervalFn = globalThis.setInterval, clearIntervalFn = globalThis.clearInterval, agora = Date.now,
 }) {
   let encerrado = false; // fechado por nós ou já avisado
   let conectou = false;
   let relogio = null;
   let socket = null;
+  let ultimaMensagem = 0; // qualquer mensagem (inclusive `pong`) prova que a conexão está viva
 
   const parar = () => {
     if (relogio !== null) clearIntervalFn(relogio);
@@ -94,10 +112,20 @@ export function conectar({
   }
   socket.onopen = () => {
     conectou = true;
+    ultimaMensagem = agora();
     if (inicial) enviar(inicial.t, inicial.campos);
-    relogio = setIntervalFn(() => enviar('ping'), PING_MS);
+    relogio = setIntervalFn(() => {
+      // Conexão "meio aberta" (troca de Wi-Fi para 4G, por exemplo): o navegador não avisa sozinho.
+      if (agora() - ultimaMensagem > SEM_PONG_MS) {
+        try { socket.close(); } catch { /* já fechado */ }
+        terminou();
+        return;
+      }
+      enviar('ping');
+    }, PING_MS);
   };
   socket.onmessage = (evento) => {
+    ultimaMensagem = agora();
     let msg;
     try {
       msg = JSON.parse(evento.data);

@@ -57,7 +57,7 @@ O servidor é um Worker da Cloudflare (pasta `worker/`); o protocolo WebSocket e
 ```sh
 python3 -m http.server 8000 &
 node tools/online/fake-server.mjs 8787 &
-node tools/online/e2e.mjs facil 844x390   # precisa do Playwright; salva prints em /tmp/claude-0/shots-online
+node tools/online/e2e.mjs facil 844x390   # precisa do Playwright; salva prints em ./shots-online
 ```
 
 ## Rodar localmente

@@ -156,9 +156,11 @@ export class Sala {
   async saiu(ws) {
     const lado = this.ladoDe(ws);
     if (lado === null) return;
+    const pin = ws.deserializeAttachment()?.pin ?? '';
+    // Sem a sala no anexo: ao acordar, o construtor não pode reler um estado velho deste socket.
+    try { ws.serializeAttachment({ pin, sala: null }); } catch { /* já fechado */ }
     try { ws.close(1000, 'saiu'); } catch { /* já fechado */ }
     if (this.state === null) return;
-    const pin = ws.deserializeAttachment()?.pin ?? '';
     const r = sair(this.state, lado, Date.now());
     r.send = r.send.filter((e) => e.to !== lado); // quem saiu não recebe mais nada
     await this.aplicar(r, pin);

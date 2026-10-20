@@ -7,7 +7,7 @@ import { mkdirSync } from 'node:fs';
 const require = createRequire('/opt/node22/lib/node_modules/');
 const { chromium } = require('playwright');
 
-const [nivel = 'facil', tamanho = '844x390', pasta = '/tmp/claude-0/shots-online', servidor = 'http://localhost:8787'] = process.argv.slice(2);
+const [nivel = 'facil', tamanho = '844x390', pasta = 'shots-online', servidor = 'http://localhost:8787'] = process.argv.slice(2);
 const [W, H] = tamanho.split('x').map(Number);
 const site = process.env.SITE ?? 'http://localhost:8000/';
 mkdirSync(pasta, { recursive: true });
