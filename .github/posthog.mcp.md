@@ -132,26 +132,60 @@ O tempo de uso que alimenta `anoiteceu` e `hora_de_dormir` fica só no `localSto
 
 ## 4. Painel "Duelo de Contas"
 
-Criado pelo MCP (`dashboard-create` + insights), na ordem:
+Criado em 2026-10-20 pelo MCP (`dashboard-create`, `insight-create`, `dashboard-update`, `annotation-create`):
+[painel 2234747](https://us.posthog.com/project/674056/dashboard/2234747). Todos os gráficos são
+`TrendsQuery` salvos (nenhum SQL), com os últimos 30 dias por padrão e contagem de eventos
+(nunca usuários únicos: não existem pessoas). Fuso do projeto: America/Sao_Paulo.
 
-| Gráfico | Tipo | Definição |
+Aparelhos = contagem de `visita_dia`. Região = só `$geoip_country_name` e `$geoip_subdivision_1_name`.
+
+| Seção | Gráfico | Definição |
 | --- | --- | --- |
-| Aparelhos por dia | Trends | contagem de `visita_dia` por dia |
-| Aparelhos por mês / novos | Trends | `visita_mes` por mês; `primeira_visita` por semana |
-| Região | Trends (tabela) | `$pageview` por `$geoip_country_name` e `$geoip_subdivision_1_name` |
-| Partidas por dia, modo e nível | Trends | `partida_iniciada` por dia, quebrado por `modo` e `nivel` |
-| Partidas por operação | Trends | `partida_iniciada` com `op_*` = true, uma série por operação |
-| Operações mais erradas | Trends (fórmula) | soma de `erros_<op>` ÷ (`acertos_<op>` + `erros_<op>`), por `nivel` |
-| Tempo de jogo | Trends | soma e média de `duracao_s` de `partida_terminada` por dia |
-| Abandono | Funil | `partida_iniciada` → `partida_terminada` |
-| Óculos | Trends | `oculos_ligados` por dia; % de partidas com `usou_oculos` |
-| Óculos × acerto | Trends (fórmula) | acerto médio com e sem `usou_oculos` |
-| Vitória contra o computador por nível | Trends (fórmula) | `resultado = vitoria` ÷ partidas `modo = cpu`, por `nivel` |
-| Revanche | Trends | `revanche` ÷ `partida_terminada` |
-| Bichinhos | Trends (pizza) | `partida_iniciada` por `bichinho` |
-| Aparelhos e páginas | Web analytics | `$device_type`, `$os`, `$browser`, `$pathname` |
+| Texto (topo) | Aviso de dados anônimos | cartão de texto: sem pessoa, sem IP, região = país e estado |
+| Números | Aparelhos hoje | `visita_dia` desde o início do dia (número) |
+| Números | Aparelhos no mês | `visita_mes` desde o início do mês (número) |
+| Números | Partidas nos últimos 30 dias | `partida_iniciada`, comparado ao período anterior |
+| Números | Partidas por dia | `partida_iniciada` por dia (linha) |
+| Partidas | Partidas por modo e nível | `partida_iniciada` por dia, quebrado por `modo` e `nivel` (barras) |
+| Partidas | Bichinhos escolhidos | `partida_iniciada` por `bichinho` (pizza) |
+| Partidas | Partidas por operação | `partida_iniciada` com `op_*` = true, uma série por operação |
+| Partidas | Tempo de jogo | média e soma de `duracao_s` de `partida_terminada` por dia (dois eixos) |
+| Partidas | Abandono de partidas | fórmula `partida_abandonada` ÷ `partida_iniciada` por dia |
+| Partidas | Vitória contra o computador por nível | fórmula vitórias ÷ partidas com `modo = cpu`, por `nivel` |
+| Partidas | Revanche | fórmula `revanche` ÷ `partida_terminada` por dia |
+| Aprendizado | Operações mais erradas | 8 somas (`erros_<op>`, `acertos_<op>`) e 4 fórmulas `erros ÷ (acertos + erros)` |
+| Aprendizado | Óculos × acerto | somas de `acertos`/`erros` com `usou_oculos` true e false; fórmulas de taxa de acerto |
+| Aprendizado | Óculos ligados por dia | `oculos_ligados` por dia |
+| Aprendizado | Partidas com óculos | fórmula `partida_terminada` com `usou_oculos` ÷ todas |
+| Duelo online | Partidas online por dia | `partida_iniciada` com `modo = online` |
+| Duelo online | Salas criadas e entradas | `sala_criada` e `sala_entrou` por dia |
+| Duelo online | Erros de sala por código | `sala_erro` por `codigo` |
+| Duelo online | Resultado das partidas online | `partida_terminada` com `modo = online` por `resultado` |
+| Hora de dormir | Anoiteceu e hora de dormir | `anoiteceu` e `hora_de_dormir` por dia |
+| Hora de dormir | Partidas terminadas de noite | `partida_terminada` por dia, quebrado por `noite` |
+| Aparelhos e região | Aparelhos por dia | `visita_dia` por dia |
+| Aparelhos e região | Aparelhos por mês | `visita_mes` por mês (6 meses) |
+| Aparelhos e região | Aparelhos novos por semana | `primeira_visita` por semana (90 dias) |
+| Aparelhos e região | Região (país e estado) | `visita_dia` por `$geoip_country_name` e `$geoip_subdivision_1_name` (tabela) |
+| Aparelhos e região | Tipo de aparelho e sistema | `visita_dia` por `$device_type` e `$os` (tabela) |
+| Aparelhos e região | Navegadores | `visita_dia` por `$browser` (pizza) |
+| Aparelhos e região | Páginas mais vistas | `$pageview` por `$pathname` |
 
-Anotação no painel: data de lançamento das 4 opções no Fácil (2026-10-19), para comparar antes/depois.
+Anotação no painel (id 504790): **2026-10-19, "4 opções no Fácil"**, para comparar antes/depois.
+
+Diferenças em relação ao plano original:
+
+- **Abandono** virou razão `partida_abandonada` ÷ `partida_iniciada` (Trends), não funil: um funil
+  conta pessoas/aparelhos únicos, o que não faz sentido aqui.
+- **Operações mais erradas** é um único valor agregado por operação (sem quebra por nível).
+- **Região** e **aparelhos/páginas** usam `visita_dia` (um por aparelho/dia) em vez de `$pageview`,
+  para não inflar a contagem; só "Páginas mais vistas" usa `$pageview`. Em vez do Web analytics
+  pronto, são três gráficos Trends (tipo+sistema, navegador, página).
+- **Sem dados ainda** (evento ou propriedade nunca recebidos em 2026-10-20): `hora_de_dormir`
+  (série vazia no gráfico "Anoiteceu e hora de dormir") e `sala_erro` com `codigo` ("Erros de sala
+  por código" sem dados). Os gráficos foram criados com os nomes documentados e começam a
+  preencher quando o jogo enviar os eventos. `estatisticas_zeradas` não tem gráfico.
+- "Óculos × acerto" mostra 0 para "Com óculos" enquanto não houver partida terminada com óculos.
 
 ## Status
 
@@ -160,4 +194,4 @@ Anotação no painel: data de lançamento das 4 opções no Fácil (2026-10-19),
       Em `localhost` nada é enviado, a não ser com `?analytics=1`; o sinal Global Privacy Control também desliga o envio.
 - [x] Primeiros eventos conferidos em 2026-10-20 (região = país/estado, sem `$ip`).
 - [x] Transformação que remove a cidade — **ativa** desde 2026-10-20.
-- [ ] Painel (seção 4).
+- [x] Painel (seção 4) — **criado em 2026-10-20**: [painel 2234747](https://us.posthog.com/project/674056/dashboard/2234747), 28 gráficos Trends + 1 cartão de texto + anotação; todos rodam sem erro (`dashboard-insights-run`). Pendentes de dados: `hora_de_dormir`, `sala_erro`/`codigo`.
