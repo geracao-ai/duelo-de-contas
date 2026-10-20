@@ -33,8 +33,17 @@ Papel de cada projeto:
 | Root directory | `/` (raiz) |
 | Preview deployments | ligadas (cada PR ganha um link) |
 
-O `npm run build` copia só os arquivos públicos (`index.html`, `termos.html`, `css/`, `js/`,
-`assets/`) para `dist/`. A pasta `functions/` na raiz é publicada automaticamente pelo Pages.
+O `npm run build` (`scripts/build.mjs`) copia só os arquivos públicos (`index.html`,
+`termos.html`, `css/`, `js/`, `assets/`) para `dist/`. A pasta `functions/` na raiz é publicada
+automaticamente pelo Pages: `functions/e/[[path]].js` repassa `/e/*` para o PostHog EUA
+(`/e/static/*` → `us-assets.i.posthog.com`, o resto → `us.i.posthog.com`), sem cookies e
+encaminhando o IP do visitante (`CF-Connecting-IP` → `X-Forwarded-For`) só para o PostHog
+calcular país/estado antes de descartá-lo.
+
+### GitHub Pages (endereço antigo)
+
+`geracao-ai.github.io/duelo-de-contas` publica só a pasta `redirect/` (workflow `pages.yml`),
+que leva para `duelo-de-contas.pages.dev` mantendo o caminho e a query (ex.: `?pin=`).
 
 ### Worker (`Workers & Pages → duelo-de-contas (Worker) → Settings → Builds`)
 
@@ -91,9 +100,9 @@ Limitações do conector atual:
       cada merge na `main`. Até o código do PIN existir, pausar os builds do Worker
       (`Settings → Builds → Branch control`, desligar os builds automáticos) **ou** definir o
       *Root directory* como `worker`.
-- [ ] Conferir as configurações de build atuais do Pages no painel (ou com o MCP novo) e, quando
-      o `npm run build` existir, mudar para `Build command: npm run build` e
-      `Build output directory: dist` — antes disso, a raiz inteira do repositório (incluindo
-      `tests/` e `tools/`) fica publicada.
+- [ ] **No painel do Pages** (*Settings → Builds*): `Build command: npm run build` e
+      `Build output directory: dist`. O `npm run build` já existe no código; sem esse ajuste, a
+      raiz inteira do repositório (incluindo `tests/` e `tools/`) continua publicada e a função
+      `/e/` pode não ser publicada.
 - [ ] Quando o PIN for implementado: Durable Object no Worker e permissão de acesso do jogo
       (`duelo-de-contas.pages.dev`) ao Worker.

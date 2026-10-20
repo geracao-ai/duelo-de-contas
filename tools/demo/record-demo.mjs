@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const BASE = process.argv[2] ?? 'http://localhost:8000';
-const SITE = 'geracao-ai.github.io/duelo-de-contas';
+const SITE = 'duelo-de-contas.pages.dev';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const browser = await chromium.launch();
