@@ -2,13 +2,13 @@
 
 Cabo de guerra da matemática para crianças de 6 a 10 anos. Resolva as contas mais rápido que o adversário para puxar a corda até a marca da vitória!
 
-Feito só com HTML, Canvas e JavaScript puro (módulos ES), sem build, sem dependências, sem imagens e sem fontes externas: os bichinhos são desenhados no canvas e os sons são sintetizados com WebAudio. Toda a interface é em português do Brasil.
+Feito só com HTML, Canvas e JavaScript puro (módulos ES), sem empacotador, sem dependências, sem imagens e sem fontes externas: os bichinhos são desenhados no canvas e os sons são sintetizados com WebAudio. Toda a interface é em português do Brasil.
 
-**▶ Jogue agora: https://geracao-ai.github.io/duelo-de-contas/**
+**▶ Jogue agora: https://duelo-de-contas.pages.dev/**
 
-[![Demonstração do Duelo de Contas: o celular liga, vira para paisagem, abre o jogo e a Pandinha vence o Sapinho](assets/demo.gif)](https://geracao-ai.github.io/duelo-de-contas/assets/demo.mp4)
+[![Demonstração do Duelo de Contas: o celular liga, vira para paisagem, abre o jogo e a Pandinha vence o Sapinho](assets/demo.gif)](https://duelo-de-contas.pages.dev/assets/demo.mp4)
 
-<sub>Clique na animação para ver o [vídeo em MP4](https://geracao-ai.github.io/duelo-de-contas/assets/demo.mp4) com qualidade total.</sub>
+<sub>Clique na animação para ver o [vídeo em MP4](https://duelo-de-contas.pages.dev/assets/demo.mp4) com qualidade total.</sub>
 
 ## Como jogar
 
@@ -80,14 +80,21 @@ js/keypad.js        teclado numérico na tela
 js/choices.js       as 4 opções de resposta do nível Fácil
 js/visual-help.js   óculos: a conta desenhada em blocos na lousinha (modelo puro e desenho)
 tests/              testes com node:test
+scripts/build.mjs   gera a pasta dist/ publicada no Cloudflare Pages
+functions/e/        Pages Function: proxy /e/* para o PostHog
+redirect/           página que leva o endereço antigo (GitHub Pages) ao novo
 assets/             vídeo de demonstração, prévia animada e imagem de compartilhamento
 tools/              scripts que geram o vídeo (tools/demo) e a imagem (tools/og)
-.github/workflows/  publicação no GitHub Pages
+.github/workflows/  CI (testes e build) e redirecionamento no GitHub Pages
 ```
 
 ## Publicação
 
-O workflow `.github/workflows/pages.yml` roda os testes e publica a raiz do repositório no GitHub Pages a cada push na branch `main`. Ative em *Settings → Pages → Source: GitHub Actions*.
+O site fica no Cloudflare Pages (https://duelo-de-contas.pages.dev) com a integração de repositório: a cada push o Cloudflare roda `npm run build` e publica a pasta `dist/` (gerada por `scripts/build.mjs`, só com `index.html`, `termos.html`, `css/`, `js/` e `assets/`). Em *Settings → Builds* use Build command `npm run build` e output `dist`.
+
+A pasta `functions/e` vira uma Pages Function que faz proxy de `/e/*` para o PostHog (EUA), mantendo as estatísticas no nosso domínio.
+
+O GitHub Pages só redireciona: o workflow `.github/workflows/pages.yml` roda os testes e publica apenas a pasta `redirect/`, que leva o endereço antigo (`geracao-ai.github.io/duelo-de-contas`) ao novo. O workflow `ci.yml` roda `npm test` e `npm run build` em pull requests e em branches que não são a `main`.
 
 ## Vídeo e imagem de compartilhamento
 
