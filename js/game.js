@@ -40,13 +40,14 @@ export function averageTime(player) {
 export class Game {
   constructor({
     ops, difficulty, rng = Math.random, ropeMax = ROPE_MAX,
-    countdown = COUNTDOWN_SECONDS, choices = false, onEvent = () => {},
+    countdown = COUNTDOWN_SECONDS, choices = false, remoteRope = false, onEvent = () => {},
   }) {
     this.ops = ops;
     this.difficulty = difficulty;
     this.rng = rng;
     this.ropeMax = ropeMax;
     this.choices = choices;
+    this.remoteRope = remoteRope; // online: quem move a corda e decide o vencedor é o servidor
     this.onEvent = onEvent;
     this.rope = 0;
     this.winner = null;
@@ -157,13 +158,15 @@ export class Game {
     player.times.push(seconds);
     this.opStats(player, problem.op).correct += 1;
 
-    const step = player.side === 0 ? -1 : 1;
-    this.rope = Math.max(-this.ropeMax, Math.min(this.ropeMax, this.rope + step));
+    if (!this.remoteRope) {
+      const step = player.side === 0 ? -1 : 1;
+      this.setRope(this.rope + step);
+    }
     this.emit('correct', {
       side: player.side, problem, seconds, streak: player.streak, rope: this.rope, glasses: player.glasses,
     });
 
-    if (Math.abs(this.rope) >= this.ropeMax) {
+    if (!this.remoteRope && Math.abs(this.rope) >= this.ropeMax) {
       this.state = 'over';
       this.winner = player.side;
       player.input = '';
@@ -172,6 +175,22 @@ export class Game {
       this.nextProblem(player);
     }
     return 'correct';
+  }
+
+  /** Posição da corda (online: valor vindo do servidor, já do ponto de vista deste aparelho). */
+  setRope(value) {
+    this.rope = Math.max(-this.ropeMax, Math.min(this.ropeMax, value));
+    return this.rope;
+  }
+
+  /** Encerra a partida por decisão externa. `winner`: lado vencedor ou null (ninguém venceu). */
+  finish(winner) {
+    if (this.state === 'over') return;
+    this.state = 'over';
+    this.winner = winner;
+    this.players.forEach((p) => { p.input = ''; p.reveal = null; });
+    if (winner === null) this.emit('end', {});
+    else this.emit('win', { side: winner });
   }
 
   onWrong(player) {

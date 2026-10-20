@@ -110,7 +110,7 @@ export function recordAnswer(stats, {
   return stats;
 }
 
-/** Registra o fim de uma partida. `humanWon` só importa contra o computador. */
+/** Registra o fim de uma partida (`mode`: cpu, 2p ou online). `humanWon` só importa contra o computador. */
 export function recordMatch(stats, { mode, humanWon }) {
   stats.matches += 1;
   if (mode === 'cpu') {

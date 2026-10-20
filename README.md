@@ -12,7 +12,7 @@ Feito só com HTML, Canvas e JavaScript puro (módulos ES), sem empacotador, sem
 
 ## Como jogar
 
-1. No menu, escolha **Contra o computador** ou **2 jogadores**.
+1. No menu, escolha **Contra o computador**, **2 jogadores aqui** (no mesmo aparelho) ou **Desafiar um amigo** (online, veja [Duelo online](#duelo-online)).
 2. Na configuração, escolha as operações (`+ − × ÷`, pelo menos uma), a dificuldade (Fácil, Médio ou Difícil) e o seu bichinho (Ursinho, Coelhinha, Gatinho, Pandinha, Raposinha ou Sapinho). No modo 2 jogadores os bichinhos precisam ser diferentes; no modo contra o computador, ele sorteia um bichinho diferente do seu.
 3. Na partida, resolva a conta que aparece no seu lado. No **Fácil**, toque na resposta certa entre **4 opções**; no **Médio** e no **Difícil**, digite a resposta no teclado da tela e aperte **OK**.
    - **Acertou:** a corda anda um passo na sua direção.
@@ -44,6 +44,22 @@ No modo 2 jogadores o teclado físico é opcional: cada lado também tem seu tec
 
 A subtração nunca dá resultado negativo, a divisão é sempre exata e a mesma conta nunca se repete em seguida. O computador demora de 5 a 8 s (Fácil), 3,5 a 6 s (Médio) ou 2,2 a 4 s (Difícil) para responder, com 70%, 82% e 92% de acerto.
 
+## Duelo online
+
+**Desafiar um amigo** leva duas pessoas, cada uma no seu aparelho, ao mesmo cabo de guerra:
+
+1. Quem cria a sala toca em **Criar sala**, escolhe operações, nível e bichinho, e recebe um **PIN de 6 números** (e o botão **Enviar convite**, que compartilha o link `?pin=482913` ou o copia).
+2. O amigo abre o link (o PIN já vem preenchido) ou toca em **Entrar com PIN**, escolhe um bichinho diferente do primeiro e toca em **Estou pronto!**.
+3. Quem criou toca em **Começar!**. Os dois recebem **as mesmas contas, na mesma ordem** (cada aparelho gera as contas com uma semente enviada pelo servidor, `js/rng.js`), e cada um vê só o próprio teclado. O servidor é quem move a corda e declara o vencedor. Não há pausa online. No fim, **Revanche** recomeça na mesma sala.
+
+O servidor é um Worker da Cloudflare (pasta `worker/`); o protocolo WebSocket está descrito na issue #18. O endereço padrão fica em `js/online.js` e pode ser trocado com `?servidor=http://localhost:8787` na URL do jogo. Para testar sem o Worker há um servidor falso e um teste com dois navegadores:
+
+```sh
+python3 -m http.server 8000 &
+node tools/online/fake-server.mjs 8787 &
+node tools/online/e2e.mjs facil 844x390   # precisa do Playwright; salva prints em ./shots-online
+```
+
 ## Rodar localmente
 
 Como o código usa módulos ES, é preciso servir os arquivos por HTTP (abrir o `index.html` direto do disco não funciona):
@@ -69,6 +85,8 @@ Isso executa `node --test tests/*.test.js`. As versões recentes do Node (22+) n
 index.html          telas (menu, configuração, partida, resultado, estatísticas) e diálogos
 termos.html         privacidade e termos, com o botão "Não enviar estatísticas"
 css/style.css       visual, botões grandes e layouts responsivos
+js/online.js        conexão WebSocket do duelo online (sem DOM, testada)
+js/rng.js           gerador com semente: mesmas contas nos dois aparelhos
 js/main.js          inicialização, fluxo de telas, teclado físico e laço principal
 js/problems.js      gerador de contas e conferência de respostas (puro, testado)
 js/game.js          estado da partida: corda, pontuação, tentativas e vitória
@@ -86,7 +104,7 @@ scripts/build.mjs   gera a pasta dist/ publicada no Cloudflare Pages
 functions/e/        Pages Function: proxy /e/* para o PostHog
 redirect/           página que leva o endereço antigo (GitHub Pages) ao novo
 assets/             vídeo de demonstração, prévia animada e imagem de compartilhamento
-tools/              scripts que geram o vídeo (tools/demo) e a imagem (tools/og)
+tools/              scripts que geram o vídeo (tools/demo), a imagem (tools/og) e testam o duelo online (tools/online)
 .github/workflows/  CI (testes e build) e redirecionamento no GitHub Pages
 ```
 

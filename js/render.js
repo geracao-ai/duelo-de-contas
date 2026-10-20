@@ -508,6 +508,15 @@ export class Renderer {
     const winX = R.x + R.w * 0.3;
     const loseX = R.x + R.w * 0.72;
     const winner = view.winner;
+    if (winner === null) { // ninguém venceu (online: o amigo saiu): os dois ficam parados
+      [[winX, 0, 1], [loseX, 1, -1]].forEach(([x, side, facing]) => {
+        drawCharacter(this.ctx, view.players[side].animal, x, groundY, s, {
+          facing, state: 'idle', t: this.time + side * 0.7, glasses: Boolean(view.players[side].glasses),
+        });
+        this.drawNameTag(x, groundY + 0.9 * s, s, view.players[side]);
+      });
+      return;
+    }
     const loser = 1 - winner;
     drawCharacter(this.ctx, view.players[winner].animal, winX, groundY, s * 1.15, {
       facing: 1, state: 'cheer', t: this.time, glasses: Boolean(view.players[winner].glasses),
