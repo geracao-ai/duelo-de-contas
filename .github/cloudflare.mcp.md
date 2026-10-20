@@ -18,8 +18,8 @@ Papel de cada projeto:
 
 - **Pages `duelo-de-contas`**: hospeda o jogo e a Pages Function `/e/*`, que repassa as
   estatísticas para o PostHog (ver [`posthog.mcp.md`](posthog.mcp.md)).
-- **Worker `duelo-de-contas`**: reservado para o **duelo online com PIN** (Durable Object).
-  Até lá, não deve publicar nada a cada merge (ver "Pendências").
+- **Worker `duelo-de-contas`**: o **duelo online com PIN** (Durable Object `Sala`), código em
+  `worker/` (ver "Worker" abaixo).
 
 ## Configuração esperada
 
@@ -49,15 +49,47 @@ que leva para `duelo-de-contas.pages.dev` mantendo o caminho e a query (ex.: `?p
 
 | Campo | Valor |
 | --- | --- |
-| Build command | (vazio por enquanto) |
+| Root directory | `worker` |
+| Build command | (vazio) ou `npm ci` |
 | Deploy command | `npx wrangler deploy` |
-| Preview command | `npx wrangler preview` |
-| Root directory | `worker` (quando o código do PIN existir) |
+| Preview command | `npx wrangler versions upload` |
 | Enable Preview builds | ligado |
 | Protect with Cloudflare Access | desligado |
 
-O `name` no arquivo de configuração do Wrangler (`worker/wrangler.jsonc`) precisa ser
-**exatamente** `duelo-de-contas`, igual ao nome no painel, senão o build falha.
+O `name` em `worker/wrangler.jsonc` precisa ser **exatamente** `duelo-de-contas`, igual ao nome no
+painel, senão o build falha. Com o *Root directory* `worker`, o Pages (raiz do repositório) e o
+Worker deixam de competir pelos mesmos arquivos.
+
+Código:
+
+- `worker/src/index.js`: Worker (`fetch`) e Durable Object `Sala` (um por PIN, **WebSocket
+  Hibernation**, binding `SALAS`, migração `new_sqlite_classes` exigida pelo plano grátis).
+- `worker/src/regras.js`: máquina de estados da sala, pura (testada em `tests/sala.test.js`).
+- `worker/src/origem.js`: lista de `Origin` aceitos (pura, testada).
+
+Endpoints (`https://duelo-de-contas.danieldopulo.workers.dev`):
+
+| Rota | O que faz |
+| --- | --- |
+| `GET /saude` | responde `ok` (texto) |
+| `GET /ws?criar=1` | WebSocket; sorteia um PIN livre (6 dígitos, não começa com 0; até 8 tentativas, depois 503) |
+| `GET /ws?pin=482913` | WebSocket; entra na sala (erros `sala-inexistente`/`sala-cheia` chegam como mensagem e a conexão fecha) |
+
+`/ws` exige `Upgrade: websocket` (senão 426) e `Origin` de `https://duelo-de-contas.pages.dev`,
+`https://*.duelo-de-contas.pages.dev`, `http://localhost:<porta>` ou `http://127.0.0.1:<porta>`
+(senão 403). O protocolo está descrito na issue #18.
+
+Privacidade: **nada é gravado**. O estado da sala fica na memória do Durable Object e numa cópia
+nos anexos dos sockets (`serializeAttachment`); não usamos `ctx.storage` (só `setAlarm`). Passam
+pelo servidor apenas bichinho, operações, nível, acertos e o PIN; não há nomes, chat, cookies nem
+IPs guardados. Quando a sala fecha (ou fica 30 min parada), tudo desaparece.
+
+Limites do plano grátis: Durable Objects só com SQLite; 100 mil requisições/dia no Worker (cada
+mensagem de WebSocket conta 1/20 de requisição para o Durable Object); sem armazenamento usado.
+Mensagens acima de 1 KB são recusadas.
+
+Testes: `npm test` (regras e Origin) e, com `cd worker && npm ci && npx wrangler dev`, o teste de
+ponta a ponta `node tools/online/smoke.mjs`.
 
 ## Estado verificado pelo MCP (2026-10-20)
 
@@ -96,13 +128,12 @@ Limitações do conector atual:
 
 ## Pendências
 
-- [ ] **Dois projetos ligados ao mesmo repositório**: hoje o Pages *e* o Worker tentam publicar a
-      cada merge na `main`. Até o código do PIN existir, pausar os builds do Worker
-      (`Settings → Builds → Branch control`, desligar os builds automáticos) **ou** definir o
-      *Root directory* como `worker`.
+- [x] **Dois projetos ligados ao mesmo repositório**: resolvido definindo o *Root directory* do
+      Worker como `worker` (o Pages continua na raiz).
 - [ ] **No painel do Pages** (*Settings → Builds*): `Build command: npm run build` e
       `Build output directory: dist`. O `npm run build` já existe no código; sem esse ajuste, a
       raiz inteira do repositório (incluindo `tests/` e `tools/`) continua publicada e a função
       `/e/` pode não ser publicada.
-- [ ] Quando o PIN for implementado: Durable Object no Worker e permissão de acesso do jogo
-      (`duelo-de-contas.pages.dev`) ao Worker.
+- [x] Durable Object no Worker e permissão de acesso do jogo (`duelo-de-contas.pages.dev`) ao
+      Worker (lista de `Origin` em `worker/src/origem.js`).
+- [ ] No painel do Worker, conferir o *Root directory* `worker` e os comandos da tabela acima.
