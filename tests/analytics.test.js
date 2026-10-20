@@ -158,3 +158,11 @@ test('track não faz nada quando desativado', () => {
   assert.equal(calls, 0);
   delete globalThis.posthog;
 });
+
+test('finishProps marca se a partida terminou de noite', () => {
+  const base = matchProps(settings, true, 'choices', 'urso');
+  const human = player(0, 1, 0, { add: { correct: 1, wrong: 0 } }, [2]);
+  assert.equal(finishProps(base, [human], { winner: 0, seconds: 5 }).noite, false);
+  assert.equal(finishProps(base, [human], { winner: 0, seconds: 5, noite: false }).noite, false);
+  assert.equal(finishProps(base, [human], { winner: 0, seconds: 5, noite: true }).noite, true);
+});

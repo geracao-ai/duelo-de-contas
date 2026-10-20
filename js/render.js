@@ -9,6 +9,21 @@ const ROPE_ANIM = 0.55;
 const CONFETTI_COLORS = ['#ff4d6d', '#ffb703', '#2ec4b6', '#4361ee', '#9b5de5', '#80ed99'];
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+
+/** Mistura duas cores '#rrggbb' (k = 0 dá `a`, k = 1 dá `b`). */
+function mix(a, b, k) {
+  const channel = (hex, i) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
+  const rgb = [0, 1, 2].map((i) => Math.round(channel(a, i) + (channel(b, i) - channel(a, i)) * k));
+  return `rgb(${rgb.join(',')})`;
+}
+
+// Estrelas fixas (x e y em frações do céu), sempre as mesmas para não "pularem" a cada quadro.
+const STARS = Array.from({ length: 44 }, (_, i) => ({
+  x: (Math.sin(i * 12.9898) * 43758.5453) % 1 * 0.5 + 0.5,
+  y: (Math.sin(i * 78.233 + 1) * 24634.6345) % 1 * 0.5 + 0.5,
+  r: 0.8 + ((i * 7) % 5) * 0.45,
+  phase: i * 1.7,
+}));
 const easeInOutCubic = (k) => (k < 0.5 ? 4 * k * k * k : 1 - ((-2 * k + 2) ** 3) / 2);
 
 function roundedRect(ctx, x, y, w, h, r) {
@@ -39,6 +54,8 @@ export class Renderer {
     this.lastState = null;
     this.particles = [];
     this.confettiTimer = 0;
+    this.noite = 0; // 0 = dia, 1 = noite (o que está desenhado agora)
+    this.noiteAlvo = 0; // para onde a noite vai (definido pelo jogo a cada quadro)
     this.clouds = [
       { x: 0.12, y: 0.12, scale: 1, speed: 0.006 },
       { x: 0.45, y: 0.22, scale: 0.7, speed: 0.004 },
@@ -179,20 +196,63 @@ export class Renderer {
   // ---------- cenário ----------
 
   drawBackground(horizon, dt) {
-    const { ctx, width, height } = this;
-    if (!this.sky || this.skyHorizon !== horizon) {
+    const { ctx, width, height, noite } = this;
+    if (!this.sky || this.skyHorizon !== horizon || this.skyNight !== noite) {
       const g = ctx.createLinearGradient(0, 0, 0, horizon);
-      g.addColorStop(0, '#4aa8ff');
-      g.addColorStop(1, '#bfe9ff');
+      g.addColorStop(0, mix('#4aa8ff', '#0b1640', noite));
+      g.addColorStop(1, mix('#bfe9ff', '#2d3f84', noite));
       this.sky = g;
       this.skyHorizon = horizon;
+      this.skyNight = noite;
     }
     ctx.fillStyle = this.sky;
     ctx.fillRect(0, 0, width, horizon + 2);
-    this.drawSun(width * 0.88, height * 0.16, clamp(height * 0.07, 24, 60));
+    if (noite > 0) this.drawStars(horizon, noite);
+    const sunRadius = clamp(height * 0.07, 24, 60);
+    if (noite < 1) {
+      ctx.save();
+      ctx.globalAlpha = 1 - noite;
+      this.drawSun(width * 0.88, height * 0.16, sunRadius);
+      ctx.restore();
+    }
+    if (noite > 0) {
+      ctx.save();
+      ctx.globalAlpha = noite;
+      this.drawMoon(width * 0.88, height * 0.16, sunRadius);
+      ctx.restore();
+    }
     this.drawClouds(horizon, dt);
     this.drawHills(horizon);
     this.drawGrass(horizon);
+  }
+
+  drawStars(horizon, noite) {
+    const { ctx, width } = this;
+    ctx.fillStyle = '#fffbe0';
+    for (const star of STARS) {
+      const twinkle = this.reducedMotion ? 1 : 0.7 + 0.3 * Math.sin(this.time * 2 + star.phase);
+      ctx.globalAlpha = noite * twinkle;
+      ctx.beginPath();
+      ctx.arc(star.x * width, star.y * horizon * 0.85, star.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /** Lua crescente: um disco claro com um pedaço "mordido" na cor do céu. */
+  drawMoon(x, y, r) {
+    const { ctx } = this;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.clip();
+    // a "mordida": o quadrado menos um círculo (regra par-ímpar), para o céu aparecer por trás
+    ctx.beginPath();
+    ctx.rect(x - r * 2, y - r * 2, r * 4, r * 4);
+    ctx.arc(x + r * 0.5, y - r * 0.18, r * 0.88, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff4c2';
+    ctx.fill('evenodd');
+    ctx.restore();
   }
 
   drawSun(x, y, r) {
@@ -222,7 +282,7 @@ export class Renderer {
       const x = (c.x - 0.1) * width;
       const y = c.y * horizon;
       const u = clamp(horizon * 0.06, 14, 40) * c.scale;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.fillStyle = `rgba(${Math.round(255 - 95 * this.noite)}, ${Math.round(255 - 80 * this.noite)}, ${Math.round(255 - 40 * this.noite)}, ${0.95 - 0.4 * this.noite})`;
       ctx.beginPath();
       ctx.arc(x, y, u, 0, Math.PI * 2);
       ctx.arc(x + u * 1.1, y - u * 0.5, u * 1.2, 0, Math.PI * 2);
@@ -235,7 +295,7 @@ export class Renderer {
   drawHills(horizon) {
     const { ctx, width } = this;
     const h = clamp(horizon * 0.2, 20, 120);
-    ctx.fillStyle = '#7ed56f';
+    ctx.fillStyle = mix('#7ed56f', '#2c6b46', this.noite);
     ctx.beginPath();
     ctx.moveTo(0, horizon);
     ctx.bezierCurveTo(width * 0.15, horizon - h * 1.4, width * 0.35, horizon - h * 0.2, width * 0.5, horizon - h * 0.8);
@@ -248,8 +308,8 @@ export class Renderer {
   drawGrass(horizon) {
     const { ctx, width, height } = this;
     const g = ctx.createLinearGradient(0, horizon, 0, height);
-    g.addColorStop(0, '#5cbf4a');
-    g.addColorStop(1, '#3f9b3a');
+    g.addColorStop(0, mix('#5cbf4a', '#21593a', this.noite));
+    g.addColorStop(1, mix('#3f9b3a', '#173f2a', this.noite));
     ctx.fillStyle = g;
     ctx.fillRect(0, horizon, width, height - horizon);
     ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
@@ -538,10 +598,66 @@ export class Renderer {
     drawCharacter(this.ctx, b, R.x + R.w * 0.87, groundY, s, { facing: -1, state: 'idle', t: this.time + 1.3 });
   }
 
+  // ---------- hora de dormir ----------
+
+  /** "Z z z" subindo devagar da cabeça de quem dorme (parados, com "reduzir movimento"). */
+  drawZzz(x, y, s, facing, seed) {
+    const { ctx } = this;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    for (let i = 0; i < 3; i++) {
+      const p = this.reducedMotion ? 0.22 + i * 0.3 : ((this.time / 3.4 + i / 3 + seed) % 1);
+      const size = s * (0.34 + 0.4 * p);
+      const px = x + facing * (p * 0.9 * s + (this.reducedMotion ? 0 : Math.sin(this.time * 1.3 + i + seed * 5) * 0.08 * s));
+      const py = y - p * 2.3 * s;
+      ctx.globalAlpha = this.reducedMotion ? 0.95 : Math.min(1, Math.sin(p * Math.PI) * 1.6);
+      ctx.font = `900 ${size}px "Trebuchet MS", "Segoe UI", system-ui, sans-serif`;
+      ctx.lineWidth = size * 0.18;
+      ctx.strokeStyle = '#1b2a5c';
+      ctx.strokeText('Z', px, py);
+      ctx.fillStyle = '#eef2ff';
+      ctx.fillText('Z', px, py);
+    }
+    ctx.restore();
+  }
+
+  /**
+   * Tela de dormir: os dois bichinhos deitados, um de cada lado do cartão (celular deitado e computador)
+   * ou embaixo dele (celular em pé). `view.card` é o retângulo do cartão na tela.
+   */
+  drawSleep(view) {
+    const { width: W, height: H, time } = this;
+    const card = view.card ?? { left: W * 0.3, right: W * 0.7, top: H * 0.2, bottom: H * 0.6 };
+    const wide = W / H > 1.1;
+    const spots = [];
+    if (wide) {
+      const side = Math.max(60, Math.min(card.left, W - card.right));
+      const s = clamp(Math.min(side / 3.3, H * 0.17), 12, 70);
+      spots.push({ cx: card.left / 2, s }, { cx: (card.right + W) / 2, s });
+      spots.forEach((spot) => { spot.groundY = H * 0.8; });
+    } else {
+      const free = Math.max(80, H - card.bottom);
+      const s = clamp(Math.min(W / 6.8, free * 0.2), 12, 60);
+      spots.push({ cx: W * 0.26, s }, { cx: W * 0.74, s });
+      spots.forEach((spot) => { spot.groundY = card.bottom + free * 0.66; });
+    }
+    spots.forEach((spot, side) => {
+      const facing = side === 0 ? 1 : -1;
+      const { s, groundY } = spot;
+      const feetX = spot.cx - facing * 1.4 * s;
+      drawCharacter(this.ctx, view.players[side].animal, feetX, groundY, s, {
+        facing, state: 'sleep', t: time + side * 1.3,
+      });
+      this.drawZzz(feetX + facing * 1.9 * s, groundY - 1.6 * s, s, facing, side * 0.37);
+    });
+  }
+
   // ---------- quadro ----------
 
   /**
-   * @param {object} view estado visível: mode ('menu'|'plain'|'match'|'result'), rope, ropeMax,
+   * @param {object} view estado visível: mode ('menu'|'plain'|'match'|'result'|'sleep'), rope, ropeMax,
    *   players[{animal,name,tag,color}], thinking[], state, countdown, winner, menuAnimals
    */
   draw(view, dt) {
@@ -555,6 +671,13 @@ export class Renderer {
     const over = view.state === 'over' || view.mode === 'result';
     this.overTime = over ? this.overTime + dt : 0;
 
+    // Noite: o jogo manda para onde ela vai; aqui o céu escurece suavemente (de uma vez com "reduzir movimento").
+    const alvo = view.mode === 'sleep' ? 1 : this.noiteAlvo;
+    if (view.mode === 'sleep') this.noite = 1;
+    else if (this.reducedMotion) this.noite = alvo > 0 ? 1 : 0;
+    else if (Math.abs(alvo - this.noite) < 0.002) this.noite = alvo;
+    else this.noite += (alvo - this.noite) * Math.min(1, dt * 4);
+
     const horizon = view.mode === 'match' || view.mode === 'result'
       ? this.scene.y + this.scene.h * 0.6
       : this.height * 0.72;
@@ -563,6 +686,7 @@ export class Renderer {
     if (view.mode === 'match') this.drawMatch(view);
     else if (view.mode === 'result') this.drawResult(view);
     else if (view.mode === 'menu') this.drawMenu(view);
+    else if (view.mode === 'sleep') this.drawSleep(view);
 
     if (view.mode === 'result' && this.overTime > 0.2) this.maybeConfetti(dt);
     this.updateParticles(dt);

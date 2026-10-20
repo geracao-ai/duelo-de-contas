@@ -119,6 +119,7 @@ function tratar(cliente, msg) {
     },
     errei() { sala.jogadores[1 - lado] && enviar(sala.jogadores[1 - lado].cliente, { t: 'errou', lado }); },
     oculos() { sala.jogadores[1 - lado] && enviar(sala.jogadores[1 - lado].cliente, { t: 'oculos', lado, on: Boolean(msg.on) }); },
+    tchau() { sair(cliente, msg.motivo === 'dormir' ? 'dormir' : undefined); },
     revanche() {
       if (sala.estado !== 'fim') return;
       sala.pedidos[lado] = true;
@@ -130,16 +131,17 @@ function tratar(cliente, msg) {
   else enviar(cliente, { t: 'erro', codigo: 'mensagem-invalida' });
 }
 
-function sair(cliente) {
+function sair(cliente, motivo) {
   const { sala, lado } = cliente;
   if (!sala) return;
+  const saiu = (de) => (motivo ? { t: 'saiu', lado: de, motivo } : { t: 'saiu', lado: de });
   cliente.sala = null;
   const outro = sala.jogadores[1 - lado];
   if (lado === 0) { // anfitrião: a sala fecha
     salas.delete(sala.pin);
     if (outro) {
       if (sala.estado === 'contagem' || sala.estado === 'jogando') enviar(outro.cliente, { t: 'fim', vencedor: null, motivo: 'saiu' });
-      enviar(outro.cliente, { t: 'saiu', lado: 0 });
+      enviar(outro.cliente, saiu(0));
       outro.cliente.sala = null;
       outro.cliente.socket.end();
     }
@@ -149,7 +151,7 @@ function sair(cliente) {
   if (sala.estado === 'espera') difundirSala(sala);
   else if (sala.estado !== 'fim') enviar(outro.cliente, { t: 'fim', vencedor: null, motivo: 'saiu' });
   sala.estado = sala.estado === 'fim' ? 'fim' : 'espera';
-  enviar(outro.cliente, { t: 'saiu', lado: 1 });
+  enviar(outro.cliente, saiu(1));
 }
 
 const servidor = createServer((req, res) => {

@@ -194,6 +194,16 @@
       </div>
     </section>
 
+    <!-- Hora de dormir -->
+    <section id="screen-sleep" class="screen sleep" hidden aria-labelledby="sleep-title">
+      <div class="card sleep-card">
+        <h2 id="sleep-title" tabindex="-1">Os bichinhos foram dormir</h2>
+        <p class="sleep-text">Vocês jogaram bastante hoje! Que tal descansar, brincar de outra coisa e voltar mais tarde?</p>
+        <p class="sleep-wake" id="sleep-wake"></p>
+        <a class="privacy-link" href="termos.html">Privacidade e termos</a>
+      </div>
+    </section>
+
     <!-- Estatísticas -->
     <section id="screen-stats" class="screen" hidden aria-labelledby="stats-title">
       <div class="card stats-card">
@@ -217,6 +227,9 @@
       <div class="row" id="dialog-buttons"></div>
     </div>
   </div>
+
+  <!-- Aviso da hora de dormir (também anunciado na região acima) -->
+  <div id="toast" class="toast" aria-hidden="true" hidden></div>
 
   <!-- Aviso de orientação -->
   <div id="rotate-hint" class="rotate-hint" role="note" hidden>

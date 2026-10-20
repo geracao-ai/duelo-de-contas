@@ -14,8 +14,9 @@ import {
   salaCriadaProps, salaErroProps,
 } from './analytics.js';
 import { createRng } from './rng.js';
+import { criarSono, limitesDaUrl } from './sono.js';
 import {
-  conectar, wsUrl, servidorDaUrl, salaValida, pinDaUrl, conviteUrl, conviteTexto, erroTexto,
+  conectar, wsUrl, servidorDaUrl, salaValida, pinDaUrl, conviteUrl, conviteTexto, erroTexto, codigoDeSaida,
   PROTOCOLO_VERSAO, PIN_TAMANHO,
 } from './online.js';
 import {
@@ -25,6 +26,10 @@ import {
 const COLORS = ['#1a5fd0', '#d62839'];
 const RESULT_DELAY = 1.9; // segundos de comemoração antes da tela de resultado
 const MESSAGE_MS = 1500;
+const TOAST_MS = 7000; // aviso "Está escurecendo…"
+const SONO_APOS_RESULTADO_MS = 8000; // quanto o resultado fica na tela antes de os bichinhos dormirem
+const TEXTO_SONOLENTO = 'Os bichinhos estão com sono. Já já eles vão dormir…';
+const AVISO_ANOITECER = '🌙 Está escurecendo… logo os bichinhos vão dormir!';
 const GOOD_MESSAGES = ['Muito bem!', 'Isso aí!', 'Acertou!', 'Mandou bem!', 'Uhuul!'];
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -44,6 +49,13 @@ const app = {
   online: null, // sala online em andamento (ver "duelo online")
   joinPin: '', // dígitos do PIN na tela "Entrar com PIN"
 };
+
+// Hora de dormir: o tempo com o jogo visível fica guardado no aparelho (ver js/sono.js).
+const sono = criarSono({
+  limites: limitesDaUrl(globalThis.location?.search ?? '', globalThis.location?.hostname ?? ''),
+});
+app.faseSono = sono.fase();
+app.sonoEspera = null; // hora (performance.now) em que a tela de dormir aparece depois do resultado
 
 const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 const renderer = new Renderer($('#stage'), { reducedMotion: reducedMotionQuery.matches });
@@ -80,12 +92,13 @@ function showScreen(name) {
   app.screen = name;
   for (const section of $$('.screen')) section.hidden = section.id !== `screen-${name}`;
   $('#btn-mute').hidden = name === 'match';
-  if (name === 'menu') {
+  if (name === 'menu' || name === 'sleep') {
     const [a, b] = [...ANIMAL_IDS].sort(() => Math.random() - 0.5);
     app.menuAnimals = [a, b];
   }
   if (name === 'setup') renderSetup();
   if (name === 'stats') renderStats();
+  if (name === 'sleep') renderSleep();
   if (name === 'lobby') renderLobby();
   if (name === 'join') renderJoin();
   renderer.resetScene(0);
@@ -483,7 +496,7 @@ function trackFinish(winner) {
   const m = app.match;
   m.reported = true;
   track('partida_terminada', finishProps(m.eventProps, humanPlayers(m), {
-    winner, seconds: elapsedSeconds(m), glassesActivations: m.glassesCount,
+    winner, seconds: elapsedSeconds(m), glassesActivations: m.glassesCount, noite: sono.fase() !== 'dia',
   }));
 }
 
@@ -652,7 +665,7 @@ function showResult() {
   const winner = game.winner;
   let title;
   if (m.remote) {
-    if (winner === null) title = erroTexto('saiu');
+    if (winner === null) title = erroTexto(app.online?.friendLeftCode ?? 'saiu');
     else title = winner === 0 ? 'Você venceu! Parabéns!' : 'Seu amigo venceu desta vez!';
   } else if (m.cpuMode) {
     title = winner === 0 ? 'Você venceu! Parabéns!' : 'O computador venceu desta vez!';
@@ -675,6 +688,7 @@ function showResult() {
     return tr;
   });
   $('#result-rows').replaceChildren(...rows);
+  app.sonoEspera = null;
   showScreen('result');
   renderResultButtons();
   announce(title);
@@ -686,13 +700,18 @@ function renderResultButtons() {
   const m = app.match;
   const again = $('#btn-again');
   const note = $('#result-note');
+  const sonolento = sono.fase() === 'dormindo'; // já deu a hora de dormir: não dá para começar outra
   if (!m?.remote) {
-    again.hidden = false;
+    again.hidden = sonolento;
     again.disabled = false;
     again.dataset.action = 'again';
     setText(again, 'Jogar de novo');
     again.setAttribute('aria-label', 'Jogar de novo');
-    note.hidden = true;
+    note.hidden = !sonolento;
+    if (sonolento && note.textContent !== TEXTO_SONOLENTO) {
+      setText(note, TEXTO_SONOLENTO);
+      announce(TEXTO_SONOLENTO);
+    }
     return;
   }
   const o = app.online;
@@ -700,10 +719,11 @@ function renderResultButtons() {
   again.dataset.action = 'online-rematch';
   setText(again, 'Revanche');
   again.setAttribute('aria-label', 'Pedir revanche ao seu amigo');
-  again.hidden = gone;
+  again.hidden = gone || sonolento;
   again.disabled = Boolean(o?.wantRematch);
   let text = '';
-  if (gone) text = erroTexto('saiu');
+  if (gone) text = erroTexto(o?.friendLeftCode ?? 'saiu');
+  else if (sonolento) text = TEXTO_SONOLENTO;
   else if (o.wantRematch) text = 'Esperando seu amigo…';
   else if (o.friendWantsRematch) text = 'Seu amigo quer revanche!';
   note.hidden = text === '';
@@ -847,6 +867,14 @@ function buildView() {
     return { mode: 'result', players: withGlasses(m), winner: m.game.winner, state: 'over' };
   }
   if (app.screen === 'menu') return { mode: 'menu', menuAnimals: app.menuAnimals, state: 'idle' };
+  if (app.screen === 'sleep') {
+    return {
+      mode: 'sleep',
+      players: app.menuAnimals.map((animal) => ({ animal })),
+      card: $('.sleep-card').getBoundingClientRect(),
+      state: 'idle',
+    };
+  }
   return { mode: 'plain', state: 'idle' };
 }
 
@@ -871,6 +899,7 @@ function frame(now) {
   lastFrame = now;
   stepMatch(dt, now);
   if (app.screen === 'lobby') drawLobby(now / 1000);
+  renderer.noiteAlvo = sono.nivelNoite();
   renderer.draw(buildView(), dt);
   requestAnimationFrame(frame);
 }
@@ -1282,6 +1311,7 @@ function startOnlineMatch(msg) {
   const sala = o?.sala;
   if (!sala || !sala.jogadores[0] || !sala.jogadores[1]) return;
   if (app.screen === 'match' && app.match && app.match.game.state !== 'over') return;
+  if (app.screen === 'sleep') return;
   app.dialog?.cancel();
   const mine = sala.jogadores[o.voce];
   const theirs = sala.jogadores[1 - o.voce];
@@ -1364,13 +1394,15 @@ function onFriendRematch(msg) {
   if (app.screen === 'result') renderResultButtons();
 }
 
-function onFriendLeft() {
+function onFriendLeft(msg) {
   const o = app.online;
+  const codigo = codigoDeSaida(msg); // 'dormiu' quando o amigo foi dormir
+  if (o) o.friendLeftCode = codigo;
   if (app.screen === 'lobby') { // o convidado saiu; a sala continua aberta
-    announce(erroTexto('saiu'));
+    announce(erroTexto(codigo));
     renderLobby();
   } else if (app.screen === 'join') { // o anfitrião saiu: a sala fechou
-    showOnlineError('saiu', { report: false });
+    showOnlineError(codigo, { report: false });
   } else if (app.screen === 'match' && app.match?.remote) {
     o.friendLeft = true;
     app.dialog?.cancel();
@@ -1409,9 +1441,95 @@ async function quitOnline() {
   showScreen('menu');
 }
 
+// ---------- hora de dormir ----------
+// Anoitece aos 10 min de jogo e os bichinhos dormem aos 15 (a partida em andamento termina antes).
+
+const jogoVisivel = () => document.visibilityState === 'visible';
+
+function showToast(text) {
+  const toast = $('#toast');
+  setText(toast, text);
+  toast.hidden = false;
+  announce(text);
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => { toast.hidden = true; }, TOAST_MS);
+}
+
+function renderSleep() {
+  const minutos = Math.max(1, Math.ceil(sono.msParaAcordar() / 60000));
+  setText($('#sleep-wake'), `Eles acordam daqui a ${plural(minutos, 'minuto', 'minutos')}.`);
+}
+
+/** Mostra a tela de dormir. No online, avisa o amigo e sai da sala. */
+function dormir() {
+  if (app.screen === 'sleep') return;
+  app.sonoEspera = null;
+  if (app.online?.conn) app.online.conn.enviar('tchau', { motivo: 'dormir' });
+  leaveOnline();
+  app.dialog?.cancel();
+  app.paused = false;
+  app.match = null;
+  app.setupOnline = false;
+  $('#toast').hidden = true;
+  track('hora_de_dormir');
+  showScreen('sleep');
+  announce('Os bichinhos foram dormir.');
+  $('#sleep-title').focus();
+}
+
+/** Deu a hora de dormir: espera a partida acabar e deixa o resultado à vista antes de apagar a luz. */
+function querDormir() {
+  if (app.screen === 'sleep' || (app.screen === 'match' && app.match)) return;
+  if (app.screen === 'result') {
+    const agora = performance.now();
+    if (app.sonoEspera === null) {
+      app.sonoEspera = agora + SONO_APOS_RESULTADO_MS;
+      renderResultButtons();
+    }
+    if (agora < app.sonoEspera) return;
+  }
+  dormir();
+}
+
+function acordar() {
+  if (app.screen !== 'sleep') return;
+  showScreen('menu');
+  announce('Os bichinhos acordaram! Vamos jogar?');
+}
+
+/** Uma vez por segundo (e quando a aba some ou volta): conta o tempo e troca de fase. */
+function verificarSono() {
+  sono.tick(jogoVisivel());
+  const antes = app.faseSono;
+  const fase = sono.fase();
+  app.faseSono = fase;
+  if (antes === 'dia' && fase !== 'dia') {
+    track('anoiteceu');
+    if (fase === 'noite') showToast(AVISO_ANOITECER);
+  }
+  if (fase === 'dormindo') querDormir();
+  else if (antes === 'dormindo') acordar();
+  if (app.screen === 'sleep') renderSleep();
+}
+
+function initSono() {
+  renderer.noite = sono.nivelNoite(); // recarregar de noite não clareia o céu por um instante
+  renderer.noiteAlvo = renderer.noite;
+  document.addEventListener('visibilitychange', verificarSono);
+  window.addEventListener('pagehide', () => sono.tick(false));
+  setInterval(verificarSono, 1000);
+  sono.tick(jogoVisivel());
+  app.faseSono = sono.fase();
+  if (app.faseSono === 'dormindo') showScreen('sleep');
+}
+
 // ---------- inicialização ----------
 
 function onAction(action) {
+  if (sono.fase() === 'dormindo') { // depois do resultado, qualquer botão leva ao sono (nada de novas partidas)
+    if (app.screen !== 'match') dormir();
+    return;
+  }
   const handlers = {
     'play-cpu': () => { app.setupOnline = false; app.settings.mode = 'cpu'; persistSettings(); showScreen('setup'); },
     'play-2p': () => { app.setupOnline = false; app.settings.mode = '2p'; persistSettings(); showScreen('setup'); },
@@ -1470,6 +1588,7 @@ function init() {
   initAnalytics();
   showScreen('menu');
   openFromInviteLink();
+  initSono();
   requestAnimationFrame((t) => { lastFrame = t; frame(t); });
 }
 
