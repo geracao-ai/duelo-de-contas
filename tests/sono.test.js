@@ -108,6 +108,7 @@ test('voltar à aba depois de 1 h escondida também zera', () => {
 test('a fase dormindo dura 1 h e depois volta o dia com o tempo zerado', () => {
   const w = mundo();
   w.joga(15 * MIN);
+  w.sono.deitar();
   assert.equal(w.sono.fase(), 'dormindo');
   assert.equal(w.sono.msParaAcordar(), HORA);
   w.t += 30 * MIN;
@@ -125,6 +126,7 @@ test('a fase dormindo dura 1 h e depois volta o dia com o tempo zerado', () => {
 test('durante o sono, jogar (visível) não prolonga o sono nem soma tempo', () => {
   const w = mundo();
   w.joga(15 * MIN);
+  w.sono.deitar();
   w.joga(30 * MIN);
   assert.equal(w.sono.fase(), 'dormindo');
   assert.equal(w.sono.msParaAcordar(), 30 * MIN);
@@ -133,6 +135,7 @@ test('durante o sono, jogar (visível) não prolonga o sono nem soma tempo', () 
 test('recarregar durante o sono continua dormindo e depois acorda', () => {
   const w = mundo();
   w.joga(15 * MIN);
+  w.sono.deitar();
   w.t += 10 * MIN;
   const depois = w.novo();
   assert.equal(depois.fase(), 'dormindo');
@@ -197,6 +200,7 @@ test('o que fica guardado é só { ativoMs, ultimoUso, dormiuEm }', () => {
 test('relógio que volta no tempo não dá mais de 1 h de sono', () => {
   const w = mundo();
   w.joga(15 * MIN);
+  w.sono.deitar();
   const guardado = JSON.parse(w.storage.getItem(SONO_KEY));
   w.t = guardado.dormiuEm - 5 * HORA;
   assert.ok(w.sono.msParaAcordar() <= HORA);
@@ -221,4 +225,70 @@ test('modo rápido: 10 s, 15 s e 30 s', () => {
   assert.equal(w.sono.fase(), 'dormindo');
   w.t += 30_000;
   assert.equal(w.sono.fase(), 'dia');
+});
+
+test('aos 15 min a fase já é dormindo, mas a hora do sono só corre depois de deitar()', () => {
+  const w = mundo();
+  w.joga(15 * MIN);
+  assert.equal(w.sono.fase(), 'dormindo');
+  assert.equal(w.sono.deitou(), false);
+  assert.equal(w.sono.msParaAcordar(), HORA);
+  w.joga(10 * MIN); // uma partida pausada ou longa: o sono não corre nem acorda sozinho
+  assert.equal(w.sono.fase(), 'dormindo');
+  assert.equal(w.sono.msParaAcordar(), HORA);
+  w.sono.deitar();
+  assert.equal(w.sono.deitou(), true);
+  w.t += 20 * MIN;
+  assert.equal(w.sono.msParaAcordar(), 40 * MIN);
+  w.t += 40 * MIN;
+  assert.equal(w.sono.fase(), 'dia');
+});
+
+test('duas abas: a aba velha, escondida, não desfaz o sono da outra', () => {
+  const w = mundo();
+  const abaB = w.novo(); // aberta e parada, com o estado de antes
+  w.joga(15 * MIN);
+  w.sono.deitar();
+  w.t += 2000;
+  abaB.tick(true); // B volta a aparecer
+  assert.equal(abaB.fase(), 'dormindo');
+  assert.equal(abaB.deitou(), true);
+  assert.equal(w.novo().fase(), 'dormindo'); // e o que B guardou não apagou o sono
+  assert.equal(JSON.parse(w.storage.getItem(SONO_KEY)).dormiuEm !== null, true);
+});
+
+test('duas abas: B escondida por mais de 1 h não zera o sono de A que ainda corre', () => {
+  const w = mundo();
+  const abaB = w.novo();
+  w.t += 50 * MIN; // B fica quieta
+  const a = w.novo();
+  w.joga(15 * MIN, true, a);
+  a.deitar();
+  w.t += 20 * MIN; // B está há mais de 1 h sem ticks; A dormiu há 20 min
+  abaB.tick(true);
+  assert.equal(abaB.fase(), 'dormindo');
+  assert.ok(abaB.msParaAcordar() > 0 && abaB.msParaAcordar() <= 40 * MIN);
+  assert.equal(a.fase(), 'dormindo');
+});
+
+test('duas abas: o uso recente de uma não conta como pausa de 1 h na outra', () => {
+  const w = mundo();
+  const abaB = w.novo();
+  const a = w.novo();
+  w.joga(5 * MIN, true, a);
+  w.t += 30 * MIN;
+  w.joga(5 * MIN, true, a); // A joga de novo; B nunca viu nada disso
+  w.t += 40 * MIN; // já se passou mais de 1 h desde o estado que B conhece, mas não desde o último uso de A
+  abaB.tick(true);
+  assert.ok(abaB.ativoMs() >= 10 * MIN);
+});
+
+test('sincronizar() pega na hora o sono que outra aba começou (evento storage)', () => {
+  const w = mundo();
+  const abaB = w.novo();
+  w.joga(15 * MIN);
+  w.sono.deitar();
+  abaB.sincronizar();
+  assert.equal(abaB.fase(), 'dormindo');
+  assert.equal(abaB.deitou(), true);
 });

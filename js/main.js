@@ -14,7 +14,7 @@ import {
   salaCriadaProps, salaErroProps,
 } from './analytics.js';
 import { createRng } from './rng.js';
-import { criarSono, limitesDaUrl } from './sono.js';
+import { criarSono, limitesDaUrl, SONO_KEY } from './sono.js';
 import {
   conectar, wsUrl, servidorDaUrl, salaValida, pinDaUrl, conviteUrl, conviteTexto, erroTexto, codigoDeSaida,
   PROTOCOLO_VERSAO, PIN_TAMANHO,
@@ -153,6 +153,7 @@ function computeSceneRect() {
 function layout() {
   $('#screen-match').classList.toggle('side', matchSideLayout());
   renderer.setSceneRect(computeSceneRect());
+  if (app.screen === 'sleep') app.sleepCard = $('.sleep-card').getBoundingClientRect();
 }
 
 // ---------- diálogos ----------
@@ -448,6 +449,7 @@ function playerInfo(cpuMode, p1, p2) {
 }
 
 function startMatch() {
+  if (sono.fase() === 'dormindo') return;
   const s = app.settings;
   const cpuMode = isCpuMode();
   const p2 = cpuMode ? randomItem(ANIMAL_IDS.filter((id) => id !== s.p1)) : s.p2;
@@ -665,7 +667,7 @@ function showResult() {
   const winner = game.winner;
   let title;
   if (m.remote) {
-    if (winner === null) title = erroTexto(app.online?.friendLeftCode ?? 'saiu');
+    if (winner === null) title = erroTexto(codigoAmigoSaiu());
     else title = winner === 0 ? 'Você venceu! Parabéns!' : 'Seu amigo venceu desta vez!';
   } else if (m.cpuMode) {
     title = winner === 0 ? 'Você venceu! Parabéns!' : 'O computador venceu desta vez!';
@@ -695,6 +697,9 @@ function showResult() {
   ($('#btn-again').hidden ? $('#screen-result [data-action="menu"]') : $('#btn-again')).focus();
 }
 
+/** Por que o amigo saiu (só vale se ele saiu mesmo): 'dormiu' ou 'saiu'. */
+const codigoAmigoSaiu = () => (app.online?.friendLeft ? app.online.friendLeftCode ?? 'saiu' : 'saiu');
+
 /** Botão "Jogar de novo" (ou "Revanche", online) e o aviso sobre o amigo. */
 function renderResultButtons() {
   const m = app.match;
@@ -722,8 +727,9 @@ function renderResultButtons() {
   again.hidden = gone || sonolento;
   again.disabled = Boolean(o?.wantRematch);
   let text = '';
-  if (gone) text = erroTexto(o?.friendLeftCode ?? 'saiu');
-  else if (sonolento) text = TEXTO_SONOLENTO;
+  if (o?.friendLeft) text = erroTexto(codigoAmigoSaiu());
+  else if (sonolento) text = TEXTO_SONOLENTO; // (quem vai dormir já saiu da sala: ver `sairDaSalaParaDormir`)
+  else if (gone) text = erroTexto('saiu');
   else if (o.wantRematch) text = 'Esperando seu amigo…';
   else if (o.friendWantsRematch) text = 'Seu amigo quer revanche!';
   note.hidden = text === '';
@@ -871,7 +877,7 @@ function buildView() {
     return {
       mode: 'sleep',
       players: app.menuAnimals.map((animal) => ({ animal })),
-      card: $('.sleep-card').getBoundingClientRect(),
+      card: app.sleepCard,
       state: 'idle',
     };
   }
@@ -940,6 +946,7 @@ function openRoomConnection(role, { pin = null, inicial }) {
 }
 
 function createRoom() {
+  if (sono.fase() === 'dormindo') return;
   const s = app.settings;
   openRoomConnection('host', {
     inicial: { t: 'criar', campos: { ops: s.ops, nivel: s.difficulty, bichinho: s.p1 } },
@@ -948,7 +955,7 @@ function createRoom() {
 }
 
 function joinRoom() {
-  if (app.joinPin.length !== PIN_TAMANHO || app.online) return;
+  if (sono.fase() === 'dormindo' || app.joinPin.length !== PIN_TAMANHO || app.online) return;
   openRoomConnection('guest', {
     pin: app.joinPin,
     inicial: { t: 'entrar', campos: { bichinho: app.settings.p1 } },
@@ -1024,6 +1031,8 @@ function onSala(msg) {
   if (o.role === 'host') {
     if (app.screen !== 'lobby') return;
     if (msg.jogadores[1] && !before?.jogadores?.[1]) {
+      o.friendLeft = false;
+      o.friendLeftCode = null;
       audio.playSfx('join');
       announce('Seu amigo entrou na sala!');
     }
@@ -1311,7 +1320,10 @@ function startOnlineMatch(msg) {
   const sala = o?.sala;
   if (!sala || !sala.jogadores[0] || !sala.jogadores[1]) return;
   if (app.screen === 'match' && app.match && app.match.game.state !== 'over') return;
-  if (app.screen === 'sleep') return;
+  if (sono.fase() === 'dormindo') { // revanche aceita depois da hora de dormir: não começa outra partida
+    sairDaSalaParaDormir();
+    return;
+  }
   app.dialog?.cancel();
   const mine = sala.jogadores[o.voce];
   const theirs = sala.jogadores[1 - o.voce];
@@ -1336,6 +1348,7 @@ function startOnlineMatch(msg) {
   $('#screen-match').appendChild(panels[1].root);
   o.wantRematch = false;
   o.friendWantsRematch = false;
+  o.friendLeftCode = null;
   app.match = {
     game, cpu: null, info, panels, cpuMode: false, remote: true, choices, resultTimer: null, recorded: false,
     startedAt: performance.now(), glassesCount: 0, reported: false, problemIndex: -1,
@@ -1436,6 +1449,7 @@ async function quitOnline() {
   });
   if (choice !== 'quit' || app.match !== m || app.screen !== 'match' || m.game.state === 'over') return;
   trackAbandon();
+  if (sono.fase() === 'dormindo') sairDaSalaParaDormir(); // o amigo vê "foi dormir", não "saiu"
   leaveOnline();
   app.match = null;
   showScreen('menu');
@@ -1460,12 +1474,19 @@ function renderSleep() {
   setText($('#sleep-wake'), `Eles acordam daqui a ${plural(minutos, 'minuto', 'minutos')}.`);
 }
 
-/** Mostra a tela de dormir. No online, avisa o amigo e sai da sala. */
+/** Online: avisa o amigo que a hora de dormir chegou e sai da sala (sem a conexão cair como erro). */
+function sairDaSalaParaDormir() {
+  if (!app.online) return;
+  app.online.conn?.enviar('tchau', { motivo: 'dormir' });
+  leaveOnline();
+}
+
+/** Mostra a tela de dormir (e só agora começa a contar a hora de acordar). */
 function dormir() {
   if (app.screen === 'sleep') return;
   app.sonoEspera = null;
-  if (app.online?.conn) app.online.conn.enviar('tchau', { motivo: 'dormir' });
-  leaveOnline();
+  sono.deitar();
+  sairDaSalaParaDormir();
   app.dialog?.cancel();
   app.paused = false;
   app.match = null;
@@ -1484,6 +1505,7 @@ function querDormir() {
     const agora = performance.now();
     if (app.sonoEspera === null) {
       app.sonoEspera = agora + SONO_APOS_RESULTADO_MS;
+      sairDaSalaParaDormir(); // uma revanche já pedida não pode mais começar
       renderResultButtons();
     }
     if (agora < app.sonoEspera) return;
@@ -1495,6 +1517,7 @@ function acordar() {
   if (app.screen !== 'sleep') return;
   showScreen('menu');
   announce('Os bichinhos acordaram! Vamos jogar?');
+  $('#screen-menu .btn')?.focus();
 }
 
 /** Uma vez por segundo (e quando a aba some ou volta): conta o tempo e troca de fase. */
@@ -1520,7 +1543,14 @@ function initSono() {
   setInterval(verificarSono, 1000);
   sono.tick(jogoVisivel());
   app.faseSono = sono.fase();
-  if (app.faseSono === 'dormindo') showScreen('sleep');
+  window.addEventListener('storage', (event) => { // outra aba mexeu no tempo de jogo
+    if (event.key === SONO_KEY || event.key === null) verificarSono();
+  });
+  if (app.faseSono === 'dormindo') {
+    sono.deitar();
+    showScreen('sleep');
+    $('#sleep-title').focus();
+  }
 }
 
 // ---------- inicialização ----------
@@ -1582,6 +1612,7 @@ function init() {
     const observer = new ResizeObserver(layout);
     observer.observe($('#panels'));
     observer.observe($('.result-card'));
+    observer.observe($('.sleep-card'));
     observer.observe($('.hud'));
   }
   renderMute();
