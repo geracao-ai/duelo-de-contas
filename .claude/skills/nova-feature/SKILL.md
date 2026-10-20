@@ -79,8 +79,25 @@ Corrija o que for grave ou médio e o que for pequeno e barato; teste de novo (e
 ## 9. Merge e publicação
 
 - Com os checks do GitHub verdes, merge **squash** com a mensagem `<título> (#<PR>)`.
-- Mudou `worker/` → confira pelo MCP da Cloudflare que o build da `main` publicou o Worker (ver `.github/cloudflare.mcp.md`).
 - O site (Pages) publica sozinho a partir da `main`.
+
+### Conferir a infra (Cloudflare) — sempre que mudar `worker/`, `functions/`, o build ou rotas
+
+Pelo conector **Cloudflare API** (ver `.github/cloudflare.mcp.md`, seção "Como verificar de novo pelo MCP"):
+
+- Último build do Worker da `main`: `build_outcome: success` e o log com `Deployed duelo-de-contas`.
+- Último deploy do Pages da `main`: `latest_stage.status: success`.
+- Mudou configuração (comandos, pastas, rotas, bindings) → atualize `.github/cloudflare.mcp.md`.
+- Falhou → leia o log do build pela API antes de mexer em qualquer coisa.
+
+### Conferir as estatísticas (PostHog) — sempre que criar, mudar ou remover eventos ou propriedades
+
+Pelo conector **PostHog** (ver `.github/posthog.mcp.md`):
+
+- Antes do merge: a tabela de eventos (seção 3) e `termos.html` refletem o que é enviado.
+- Depois do merge, com o site no ar: o evento novo aparece em `read-data-schema` com as propriedades esperadas, **sem dado pessoal** (sem nome, sem IP, região só país e estado).
+- Painel "Duelo de Contas": crie ou ajuste o gráfico do evento novo e registre a mudança na seção 4.
+- Nunca mude configurações do projeto ou transformações do PostHog sem combinar antes.
 
 ## 10. Entregar
 
