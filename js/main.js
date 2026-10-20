@@ -11,9 +11,15 @@ import * as audio from './audio.js';
 import * as stats from './stats.js';
 import {
   initAnalytics, track, matchProps, finishProps, abandonProps, OP_EVENT_NAMES,
+  salaCriadaProps, salaErroProps,
 } from './analytics.js';
+import { createRng } from './rng.js';
 import {
-  OPERATIONS, DIFFICULTIES, OP_SYMBOLS, OP_NAMES, spokenProblem,
+  conectar, wsUrl, servidorDaUrl, pinDaUrl, conviteUrl, conviteTexto, erroTexto,
+  PROTOCOLO_VERSAO, PIN_TAMANHO,
+} from './online.js';
+import {
+  OPERATIONS, DIFFICULTIES, DIFFICULTY_LABELS, OP_SYMBOLS, OP_NAMES, spokenProblem,
 } from './problems.js';
 
 const COLORS = ['#1a5fd0', '#d62839'];
@@ -34,6 +40,9 @@ const app = {
   menuAnimals: ['urso', 'coelho'],
   rotateDismissed: false,
   liveFlip: false,
+  setupOnline: false, // a tela de configuração está no modo "criar sala"
+  online: null, // sala online em andamento (ver "duelo online")
+  joinPin: '', // dígitos do PIN na tela "Entrar com PIN"
 };
 
 const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -77,6 +86,8 @@ function showScreen(name) {
   }
   if (name === 'setup') renderSetup();
   if (name === 'stats') renderStats();
+  if (name === 'lobby') renderLobby();
+  if (name === 'join') renderJoin();
   renderer.resetScene(0);
   updateRotateHint();
   layout();
@@ -104,7 +115,13 @@ function computeSceneRect() {
   if (app.screen === 'match') {
     const hud = $('.hud').getBoundingClientRect();
     const panels = $$('.panel').map((p) => p.getBoundingClientRect());
-    if (panels.length < 2) return { x: 0, y: 0, w: W, h: H };
+    if (panels.length === 0) return { x: 0, y: 0, w: W, h: H };
+    if (panels.length === 1) { // online: só o painel de "você"
+      if (matchSideLayout()) {
+        return { x: panels[0].right, y: hud.bottom, w: Math.max(120, W - panels[0].right), h: H - hud.bottom };
+      }
+      return { x: 0, y: hud.bottom, w: W, h: Math.max(100, panels[0].top - hud.bottom) };
+    }
     if (matchSideLayout()) {
       const x = panels[0].right;
       return { x, y: hud.bottom, w: Math.max(120, panels[1].left - x), h: H - hud.bottom };
@@ -172,12 +189,18 @@ async function openPauseMenu({ title, text, resumeLabel, quitLabel }) {
   }
 }
 
-const pauseGame = () => openPauseMenu({
-  title: 'Jogo pausado', text: 'O jogo está esperando por você.', resumeLabel: 'Continuar', quitLabel: 'Sair',
-});
-const quitGame = () => openPauseMenu({
-  title: 'Sair da partida?', text: 'Você vai perder o progresso desta partida.', resumeLabel: 'Continuar jogando', quitLabel: 'Sim, sair',
-});
+const pauseGame = () => {
+  if (app.match?.remote) return quitOnline(); // não existe pausa online
+  return openPauseMenu({
+    title: 'Jogo pausado', text: 'O jogo está esperando por você.', resumeLabel: 'Continuar', quitLabel: 'Sair',
+  });
+};
+const quitGame = () => {
+  if (app.match?.remote) return quitOnline();
+  return openPauseMenu({
+    title: 'Sair da partida?', text: 'Você vai perder o progresso desta partida.', resumeLabel: 'Continuar jogando', quitLabel: 'Sim, sair',
+  });
+};
 
 // ---------- configuração ----------
 
@@ -192,7 +215,7 @@ function persistSettings() {
 }
 
 function buildCards() {
-  for (const slot of ['p1', 'p2']) {
+  for (const slot of ['p1', 'p2', 'guest']) {
     const grid = $(`#cards-${slot}`);
     for (const animal of ANIMALS) {
       const card = make('button', 'char-card');
@@ -214,7 +237,7 @@ function drawCardThumb(card, selected) {
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, size, size);
-  const facing = card.dataset.slot === 'p1' ? 1 : -1;
+  const facing = card.dataset.slot === 'p2' ? -1 : 1;
   drawCharacter(ctx, card.dataset.animal, size / 2, size - 6, 24, {
     facing, state: selected ? 'cheer' : 'idle', t: 0,
   });
@@ -222,8 +245,8 @@ function drawCardThumb(card, selected) {
 
 function renderCards() {
   const s = app.settings;
-  const twoPlayers = s.mode === '2p';
-  for (const card of $$('.char-card')) {
+  const twoPlayers = s.mode === '2p' && !app.setupOnline;
+  for (const card of $$('#screen-setup .char-card')) {
     const slot = card.dataset.slot;
     const id = card.dataset.animal;
     const selected = s[slot] === id;
@@ -252,9 +275,19 @@ function renderSetup() {
   $$('#opt-mode .chip').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.value === s.mode)));
   $$('#opt-diff .chip').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.value === s.difficulty)));
   $$('#opt-ops .chip').forEach((b) => b.setAttribute('aria-pressed', String(s.ops.includes(b.dataset.value))));
-  $('#field-p2').hidden = isCpuMode();
-  $('#cpu-hint').hidden = !isCpuMode();
-  setText($('#lbl-p1'), isCpuMode() ? 'Escolha o seu bichinho' : 'Jogador 1: escolha seu bichinho');
+  const online = app.setupOnline;
+  $('#field-mode').hidden = online;
+  $('#field-p2').hidden = online || isCpuMode();
+  $('#cpu-hint').hidden = online || !isCpuMode();
+  setText($('#setup-title'), online ? 'Criar sala' : 'Prepare o duelo');
+  setText($('#lbl-p1'), online || isCpuMode() ? 'Escolha o seu bichinho' : 'Jogador 1: escolha seu bichinho');
+  const start = $('#btn-setup-start');
+  start.dataset.action = online ? 'online-create-go' : 'start';
+  setText(start, online ? 'Criar sala' : 'Começar!');
+  start.setAttribute('aria-label', online ? 'Criar a sala' : 'Começar a partida');
+  const back = $('#btn-setup-back');
+  back.dataset.action = online ? 'online' : 'menu';
+  back.setAttribute('aria-label', online ? 'Voltar' : 'Voltar ao menu');
   renderCards();
 }
 
@@ -421,13 +454,21 @@ function startMatch() {
   };
   track('partida_iniciada', app.match.eventProps);
   app.paused = false;
+  prepareMatchScreen(false);
   showScreen('match');
   announce(`Partida começando. ${info[0].tag} contra ${info[1].tag}.`);
 }
 
+/** Ajusta a tela da partida para o modo online (sem pausa, só o painel de "você") ou o normal. */
+function prepareMatchScreen(remote) {
+  $('#screen-match').classList.toggle('online', remote);
+  $('#btn-pause').hidden = remote;
+  $$('.friend-tag').forEach((node) => node.remove());
+}
+
 // ---------- estatísticas anônimas ----------
 
-const humanPlayers = (m) => (m.cpuMode ? [m.game.players[0]] : m.game.players);
+const humanPlayers = (m) => (m.cpuMode || m.remote ? [m.game.players[0]] : m.game.players);
 const elapsedSeconds = (m) => (performance.now() - m.startedAt) / 1000;
 
 /** Partida interrompida (Sair ou fechar a página) antes de terminar. */
@@ -458,7 +499,7 @@ function setMessage(side, text, kind) {
 }
 
 function humanSides() {
-  return app.match.cpuMode ? [0] : [0, 1];
+  return app.match.cpuMode || app.match.remote ? [0] : [0, 1];
 }
 
 function handleGameEvent(type, payload) {
@@ -472,13 +513,15 @@ function handleGameEvent(type, payload) {
     reveal: () => onReveal(payload),
     win: () => onWin(payload),
     glasses: () => onGlasses(payload),
+    end: () => onEnd(),
   };
   handlers[type]?.();
 }
 
 function onProblem({ side, problem }) {
   // Só anuncia a conta no modo contra o computador (em 2 jogadores seria confuso).
-  if (side === 0 && app.match.cpuMode) announce(`Conta: ${spokenProblem(problem)}`);
+  if (app.match.remote && side === 0) app.match.problemIndex += 1;
+  if (side === 0 && (app.match.cpuMode || app.match.remote)) announce(`Conta: ${spokenProblem(problem)}`);
 }
 
 function recordHumanAnswer(side, payload, correct) {
@@ -497,6 +540,7 @@ function onCorrect(payload) {
   setMessage(side, randomItem(GOOD_MESSAGES), 'good');
   announce(`${whoName(side)} acertou!`);
   recordHumanAnswer(side, payload, true);
+  if (app.match.remote) sendOnline('acertei', { n: app.match.problemIndex });
 }
 
 function onWrong(payload) {
@@ -509,6 +553,7 @@ function onWrong(payload) {
   setMessage(side, 'Tente de novo!', 'bad');
   announce(`${whoName(side)} errou. Tente de novo!`);
   recordHumanAnswer(side, payload, false);
+  if (app.match.remote) sendOnline('errei', { n: app.match.problemIndex });
 }
 
 function onGlasses({ side, on }) {
@@ -524,6 +569,7 @@ function onGlasses({ side, on }) {
   audio.playSfx(on ? 'glassesOn' : 'glassesOff');
   renderer.trigger(side, on ? 'glassesOn' : 'glassesOff');
   announce(on ? `${whoName(side)} pôs os óculos. A conta aparece em blocos.` : `${whoName(side)} tirou os óculos.`);
+  if (m.remote) sendOnline('oculos', { on });
 }
 
 function onReveal({ side, answer }) {
@@ -536,15 +582,22 @@ function onWin({ side }) {
   audio.playSfx('win');
   m.resultTimer = RESULT_DELAY;
   announce(`${whoName(side)} venceu a partida!`);
-  stats.recordMatch(app.stats, { mode: app.settings.mode, humanWon: side === 0 });
+  stats.recordMatch(app.stats, { mode: m.remote ? 'online' : app.settings.mode, humanWon: side === 0 });
   stats.saveStats(app.stats);
   trackFinish(side);
+}
+
+/** Partida encerrada sem vencedor (online: o amigo saiu). */
+function onEnd() {
+  const m = app.match;
+  m.resultTimer = 0.5;
+  trackFinish(null);
 }
 
 function perform(side, type, digit) {
   const m = app.match;
   if (!m || app.screen !== 'match' || app.paused) return;
-  if (m.cpuMode && side === 1) return;
+  if ((m.cpuMode || m.remote) && side === 1) return;
   const { game } = m;
   if (type === 'glasses') {
     if (game.state !== 'over') game.toggleGlasses(side);
@@ -564,6 +617,7 @@ function updatePanels(now) {
   const m = app.match;
   const { game } = m;
   for (const panel of m.panels) {
+    if (panel.friend) { updateFriendTag(panel, game, now); continue; }
     const player = game.players[panel.side];
     const reveal = player.reveal;
     setText(panel.problem, player.problem ? player.problem.text : '');
@@ -596,9 +650,15 @@ function showResult() {
   const m = app.match;
   const { game, info } = m;
   const winner = game.winner;
-  const title = m.cpuMode
-    ? (winner === 0 ? 'Você venceu! Parabéns!' : 'O computador venceu desta vez!')
-    : `${info[winner].tag} venceu! Parabéns!`;
+  let title;
+  if (m.remote) {
+    if (winner === null) title = erroTexto('saiu');
+    else title = winner === 0 ? 'Você venceu! Parabéns!' : 'Seu amigo venceu desta vez!';
+  } else if (m.cpuMode) {
+    title = winner === 0 ? 'Você venceu! Parabéns!' : 'O computador venceu desta vez!';
+  } else {
+    title = `${info[winner].tag} venceu! Parabéns!`;
+  }
   setText($('#result-title'), title);
   const rows = game.players.map((player, side) => {
     const tr = make('tr', winner === side ? 'is-winner' : '');
@@ -616,8 +676,41 @@ function showResult() {
   });
   $('#result-rows').replaceChildren(...rows);
   showScreen('result');
+  renderResultButtons();
   announce(title);
-  $('#screen-result [data-action="again"]').focus();
+  ($('#btn-again').hidden ? $('#screen-result [data-action="menu"]') : $('#btn-again')).focus();
+}
+
+/** Botão "Jogar de novo" (ou "Revanche", online) e o aviso sobre o amigo. */
+function renderResultButtons() {
+  const m = app.match;
+  const again = $('#btn-again');
+  const note = $('#result-note');
+  if (!m?.remote) {
+    again.hidden = false;
+    again.disabled = false;
+    again.dataset.action = 'again';
+    setText(again, 'Jogar de novo');
+    again.setAttribute('aria-label', 'Jogar de novo');
+    note.hidden = true;
+    return;
+  }
+  const o = app.online;
+  const gone = !o || o.friendLeft || !o.conn?.aberta();
+  again.dataset.action = 'online-rematch';
+  setText(again, 'Revanche');
+  again.setAttribute('aria-label', 'Pedir revanche ao seu amigo');
+  again.hidden = gone;
+  again.disabled = Boolean(o?.wantRematch);
+  let text = '';
+  if (gone) text = erroTexto('saiu');
+  else if (o.wantRematch) text = 'Esperando seu amigo…';
+  else if (o.friendWantsRematch) text = 'Seu amigo quer revanche!';
+  note.hidden = text === '';
+  if (note.textContent !== text) {
+    setText(note, text);
+    if (text) announce(text);
+  }
 }
 
 // ---------- estatísticas ----------
@@ -717,13 +810,15 @@ function onKeyDown(event) {
     if (event.key === 'Escape') app.dialog.cancel();
     return;
   }
-  if (app.screen !== 'match' || !app.match || event.ctrlKey || event.metaKey || event.altKey) return;
+  if (event.ctrlKey || event.metaKey || event.altKey) return;
+  if (app.screen === 'join') { onJoinKey(event); return; }
+  if (app.screen !== 'match' || !app.match) return;
   if (event.key === 'Escape') {
     event.preventDefault();
     pauseGame();
     return;
   }
-  const action = keyToAction(event, !app.match.cpuMode, app.match.choices);
+  const action = keyToAction(event, !app.match.cpuMode && !app.match.remote, app.match.choices);
   if (!action) return;
   event.preventDefault();
   if (!event.repeat || action.type === 'erase') perform(action.side, action.type, action.digit);
@@ -775,18 +870,559 @@ function frame(now) {
   const dt = Math.min(0.1, Math.max(0, (now - lastFrame) / 1000));
   lastFrame = now;
   stepMatch(dt, now);
+  if (app.screen === 'lobby') drawLobby(now / 1000);
   renderer.draw(buildView(), dt);
   requestAnimationFrame(frame);
+}
+
+// ---------- duelo online ----------
+// Lado local: "você" é sempre o lado 0 (esquerda, azul) nos dois aparelhos. O servidor numera
+// os lados pelo papel na sala (0 = anfitrião, 1 = convidado), então o convidado inverte a corda.
+
+const serverBase = () => servidorDaUrl(globalThis.location?.search ?? '');
+
+function sendOnline(type, fields) {
+  app.online?.conn?.enviar(type, fields);
+}
+
+/** Fecha a conexão (sem avisar callbacks) e esquece a sala. */
+function leaveOnline() {
+  const o = app.online;
+  app.online = null;
+  o?.conn?.fechar();
+}
+
+function openRoomConnection(role, { pin = null, inicial }) {
+  leaveOnline();
+  const o = {
+    role, pin, voce: null, sala: null, conn: null, myAnimal: app.settings.p1, ready: false,
+    friendLeft: false, wantRematch: false, friendWantsRematch: false,
+  };
+  app.online = o;
+  const current = () => app.online === o;
+  o.conn = conectar({
+    url: wsUrl(serverBase(), { pin }),
+    inicial: { t: inicial.t, campos: { v: PROTOCOLO_VERSAO, ...inicial.campos } },
+    onMensagem: (msg) => { if (current()) onServerMessage(msg); },
+    onFalha: () => { if (current()) onConnectionLost(); },
+    onFechou: () => { if (current()) onConnectionLost(); },
+  });
+  return o;
+}
+
+function createRoom() {
+  const s = app.settings;
+  openRoomConnection('host', {
+    inicial: { t: 'criar', campos: { ops: s.ops, nivel: s.difficulty, bichinho: s.p1 } },
+  });
+  showScreen('lobby');
+}
+
+function joinRoom() {
+  if (app.joinPin.length !== PIN_TAMANHO || app.online) return;
+  openRoomConnection('guest', {
+    pin: app.joinPin,
+    inicial: { t: 'entrar', campos: { bichinho: app.settings.p1 } },
+  });
+  renderJoin();
+}
+
+/** Mostra o erro com o diálogo de sempre e volta ao menu online. */
+async function showOnlineError(codigo, { report = true } = {}) {
+  if (report) track('sala_erro', salaErroProps(codigo));
+  if (app.match && !app.match.reported && app.match.game.state !== 'over') trackAbandon();
+  leaveOnline();
+  app.dialog?.cancel();
+  app.match = null;
+  showScreen('online');
+  announce(erroTexto(codigo));
+  await showDialog({
+    title: 'Ops!',
+    text: erroTexto(codigo),
+    buttons: [{ label: 'Entendi', value: 'ok', className: 'btn-blue' }],
+  });
+}
+
+function onConnectionLost() {
+  const o = app.online;
+  if (o?.friendLeft) { // a sala fechou porque o amigo saiu: sem alarde
+    if (app.screen === 'result') renderResultButtons();
+    return;
+  }
+  showOnlineError('conexao');
+}
+
+function onServerMessage(msg) {
+  const handlers = {
+    sala: onSala,
+    contagem: startOnlineMatch,
+    corda: onRope,
+    errou: onFriendWrong,
+    oculos: onFriendGlasses,
+    fim: onServerFinish,
+    revanche: onFriendRematch,
+    saiu: onFriendLeft,
+    erro: onServerError,
+  };
+  handlers[msg.t]?.(msg);
+}
+
+const otherAnimal = (...taken) => ANIMAL_IDS.find((id) => !taken.includes(id));
+
+function chooseGuestAnimal(id) {
+  const o = app.online;
+  o.myAnimal = id;
+  app.settings.p1 = id;
+  persistSettings();
+  sendOnline('bichinho', { bichinho: id });
+}
+
+function onSala(msg) {
+  const o = app.online;
+  const first = !o.sala;
+  const before = o.sala;
+  o.sala = msg;
+  o.voce = msg.voce;
+  o.pin = msg.pin ?? o.pin;
+  if (first) {
+    if (o.role === 'host') track('sala_criada', salaCriadaProps(app.settings));
+    else track('sala_entrou', { nivel: msg.nivel });
+  }
+  if (o.role === 'host') {
+    if (app.screen !== 'lobby') return;
+    if (msg.jogadores[1] && !before?.jogadores?.[1]) {
+      audio.playSfx('join');
+      announce('Seu amigo entrou na sala!');
+    }
+    renderLobby();
+    return;
+  }
+  if (app.screen !== 'join') return;
+  const host = msg.jogadores[0];
+  if (first && host && o.myAnimal === host.bichinho) chooseGuestAnimal(otherAnimal(host.bichinho));
+  renderJoin();
+  if (first) announce('Você entrou na sala! Escolha seu bichinho e toque em Estou pronto.');
+}
+
+function onServerError(msg) {
+  const o = app.online;
+  if (msg.codigo === 'bichinho-igual' && o) {
+    const taken = o.sala?.jogadores?.[0]?.bichinho ?? o.myAnimal;
+    const next = otherAnimal(taken, o.myAnimal);
+    if (o.sala) {
+      chooseGuestAnimal(next);
+      renderJoin();
+    } else { // o servidor recusou o "entrar": tenta de novo com outro bichinho
+      o.myAnimal = next;
+      o.conn.enviar('entrar', { v: PROTOCOLO_VERSAO, bichinho: next });
+    }
+    announce(erroTexto('bichinho-igual'));
+    return;
+  }
+  showOnlineError(msg.codigo);
+}
+
+// ----- sala de espera (anfitrião) -----
+
+function fillPin(box, digits, placeholder = '') {
+  while (box.children.length < PIN_TAMANHO) box.appendChild(make('span', 'pin-digit'));
+  [...box.children].forEach((node, i) => {
+    setText(node, digits[i] ?? placeholder);
+    node.classList.toggle('is-empty', !digits[i]);
+    node.classList.toggle('is-next', !placeholder && i === digits.length);
+  });
+}
+
+function renderLobby() {
+  const o = app.online;
+  const sala = o?.sala;
+  const pin = sala?.pin ?? '';
+  const box = $('#lobby-pin');
+  fillPin(box, pin, '•');
+  box.setAttribute('aria-label', pin ? `PIN da sala: ${pin.split('').join(' ')}` : 'Criando a sala');
+  const host = sala?.jogadores?.[0];
+  const friend = sala?.jogadores?.[1];
+  setText($('#slot-host-name'), host ? getAnimal(host.bichinho).name : '');
+  setText($('#slot-guest-name'), friend
+    ? `${getAnimal(friend.bichinho).name}${friend.pronto ? ' · pronto!' : ''}`
+    : 'Esperando seu amigo…');
+  $('#slot-guest').classList.toggle('is-here', Boolean(friend));
+  $('#btn-invite').disabled = !pin;
+  $('#btn-lobby-start').disabled = !(friend?.pronto && sala.estado === 'espera');
+  if (friend && !friend.pronto) $('#lobby-title').dataset.hint = 'friend-choosing';
+}
+
+function fitCanvas(canvas, size) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  if (canvas.width !== size * dpr) {
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+  }
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, size, size);
+  return ctx;
+}
+
+function drawLobby(seconds) {
+  const sala = app.online?.sala;
+  const size = 132;
+  const host = sala?.jogadores?.[0];
+  const friend = sala?.jogadores?.[1];
+  let ctx = fitCanvas($('canvas', $('#slot-host')), size);
+  if (host) drawCharacter(ctx, host.bichinho, size / 2, size - 8, 36, { facing: 1, state: 'idle', t: seconds });
+  ctx = fitCanvas($('canvas', $('#slot-guest')), size);
+  if (friend) {
+    drawCharacter(ctx, friend.bichinho, size / 2, size - 8, 36, {
+      facing: -1, state: friend.pronto ? 'cheer' : 'idle', t: seconds + 0.7,
+    });
+  } else {
+    ctx.font = '900 96px "Trebuchet MS", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = '#2b1f3a';
+    ctx.fillStyle = '#ffd23f';
+    const bob = Math.sin(seconds * 3) * 4;
+    ctx.strokeText('?', size / 2, size / 2 + bob);
+    ctx.fillText('?', size / 2, size / 2 + bob);
+  }
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const area = make('textarea');
+      area.value = text;
+      area.setAttribute('readonly', '');
+      area.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+      document.body.appendChild(area);
+      area.select();
+      const ok = document.execCommand('copy');
+      area.remove();
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
+async function inviteFriend() {
+  const pin = app.online?.sala?.pin;
+  if (!pin) return;
+  const url = conviteUrl(globalThis.location.href, pin);
+  const note = $('#invite-note');
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'Duelo de Contas', text: conviteTexto(pin), url });
+      return;
+    } catch (error) {
+      if (error?.name === 'AbortError') return; // a criança fechou a folha de compartilhar
+    }
+  }
+  const copied = await copyText(url);
+  setText(note, copied ? 'Link copiado!' : `Passe o PIN ${pin.split('').join(' ')} para o seu amigo.`);
+  announce(note.textContent);
+}
+
+// ----- entrar com PIN (convidado) -----
+
+function initJoinKeypad() {
+  const pad = createKeypad({
+    playerLabel: 'PIN',
+    onDigit: (d) => typePin(d),
+    onErase: () => erasePin(),
+    onSubmit: joinRoom,
+  });
+  $('#join-keypad-slot').appendChild(pad.element);
+  app.joinKeypad = pad;
+}
+
+function typePin(digit) {
+  if (app.online || app.joinPin.length >= PIN_TAMANHO) return;
+  app.joinPin += digit;
+  audio.playSfx('click');
+  renderJoin();
+}
+
+function erasePin() {
+  if (app.online || app.joinPin === '') return;
+  app.joinPin = app.joinPin.slice(0, -1);
+  renderJoin();
+}
+
+function onJoinKey(event) {
+  const o = app.online;
+  if (o?.sala) return;
+  if (/^\d$/.test(event.key)) {
+    event.preventDefault();
+    typePin(event.key);
+  } else if (event.key === 'Backspace') {
+    event.preventDefault();
+    erasePin();
+  } else if (event.key === 'Enter' && !event.target.closest?.('button')) {
+    event.preventDefault();
+    joinRoom();
+  }
+}
+
+const opsText = (ops) => OPERATIONS.filter((op) => ops.includes(op)).map((op) => OP_SYMBOLS[op]).join(' ');
+
+function renderJoin() {
+  const o = app.online;
+  const sala = o?.sala;
+  $('#join-pin-stage').hidden = Boolean(sala);
+  $('#join-room-stage').hidden = !sala;
+  const status = $('#join-status');
+  status.hidden = !(o && !sala);
+  setText(status, 'Entrando na sala…');
+  if (!sala) {
+    fillPin($('#join-pin'), app.joinPin);
+    $('#join-pin').setAttribute('aria-label', app.joinPin
+      ? `PIN digitado: ${app.joinPin.split('').join(' ')}` : 'Nenhum número digitado');
+    $('#btn-join-go').disabled = app.joinPin.length !== PIN_TAMANHO || Boolean(o);
+    app.joinKeypad?.setEnabled(!o);
+    return;
+  }
+  setText($('#join-room-info'),
+    `Sala do seu amigo · Operações: ${opsText(sala.ops)} · ${DIFFICULTY_LABELS[sala.nivel]}`);
+  const hostAnimal = sala.jogadores[0]?.bichinho;
+  for (const card of $$('#cards-guest .char-card')) {
+    const id = card.dataset.animal;
+    const selected = o.myAnimal === id;
+    const blocked = id === hostAnimal || (o.ready && !selected);
+    const name = getAnimal(id).name;
+    card.setAttribute('aria-pressed', String(selected));
+    card.setAttribute('aria-disabled', String(blocked));
+    card.setAttribute('aria-label', id === hostAnimal ? `${name}, já escolhido pelo seu amigo` : name);
+    drawCardThumb(card, selected);
+  }
+  $('#join-wait').hidden = !o.ready;
+  $('#btn-ready').hidden = o.ready;
+}
+
+function onGuestCardClick(event) {
+  const card = event.target.closest('.char-card');
+  const o = app.online;
+  if (!card || !o?.sala || o.ready) return;
+  if (card.getAttribute('aria-disabled') === 'true') {
+    announce('Esse bichinho já foi escolhido pelo seu amigo.');
+    return;
+  }
+  chooseGuestAnimal(card.dataset.animal);
+  announce(`${getAnimal(card.dataset.animal).name} escolhido.`);
+  renderJoin();
+}
+
+function readyToPlay() {
+  const o = app.online;
+  if (!o?.sala || o.ready) return;
+  o.ready = true;
+  sendOnline('pronto');
+  renderJoin();
+  announce('Esperando seu amigo começar…');
+}
+
+/** Link de convite (?pin=482913): abre direto em "Entrar com PIN" com os dígitos preenchidos. */
+function openFromInviteLink() {
+  const pin = pinDaUrl(globalThis.location.search);
+  if (!pin) return;
+  app.joinPin = pin;
+  showScreen('join');
+  try {
+    const url = new URL(globalThis.location.href);
+    url.searchParams.delete('pin');
+    globalThis.history.replaceState(null, '', url.pathname + url.search + url.hash);
+  } catch {
+    // sem history: o PIN fica na barra de endereço, sem problema
+  }
+  $('#btn-join-go').focus();
+}
+
+// ----- partida online -----
+
+function buildFriendTag(info) {
+  const root = make('div', 'friend-tag');
+  root.style.setProperty('--accent', info.color);
+  const name = make('b', 'friend-name', info.tag);
+  name.append(make('span', 'friend-animal', ` · ${info.name}`));
+  const score = make('span', 'friend-score', 'Acertos: 0');
+  const status = make('span', 'friend-status', 'preparando…');
+  root.append(name, score, status);
+  return {
+    side: 1, friend: true, root, score, status, msgUntil: 0,
+  };
+}
+
+function flashFriend(text, kind) {
+  const panel = app.match.panels[1];
+  setText(panel.status, text);
+  panel.status.className = `friend-status ${kind}`;
+  panel.msgUntil = performance.now() + MESSAGE_MS;
+}
+
+function updateFriendTag(panel, game, now) {
+  setText(panel.score, `Acertos: ${game.players[1].correct}`);
+  if (panel.msgUntil && now > panel.msgUntil) panel.msgUntil = 0;
+  if (panel.msgUntil) return;
+  const idle = { playing: 'pensando…', countdown: 'preparando…' }[game.state] ?? '';
+  setText(panel.status, idle);
+  panel.status.className = 'friend-status';
+}
+
+function startOnlineMatch(msg) {
+  const o = app.online;
+  const sala = o?.sala;
+  if (!sala || !sala.jogadores[0] || !sala.jogadores[1]) return;
+  if (app.screen === 'match' && app.match && app.match.game.state !== 'over') return;
+  app.dialog?.cancel();
+  const mine = sala.jogadores[o.voce];
+  const theirs = sala.jogadores[1 - o.voce];
+  const choices = usesChoices(sala.nivel);
+  const input = choices ? 'choices' : 'keypad';
+  const info = [
+    { animal: mine.bichinho, name: getAnimal(mine.bichinho).name, tag: 'Você', color: COLORS[0] },
+    { animal: theirs.bichinho, name: getAnimal(theirs.bichinho).name, tag: 'Seu amigo', color: COLORS[1] },
+  ];
+  const game = new Game({
+    ops: sala.ops,
+    difficulty: sala.nivel,
+    choices,
+    remoteRope: true,
+    rng: createRng(msg.semente), // só o jogador local consome o gerador: as contas saem iguais nos dois aparelhos
+    countdown: msg.segundos ?? 3,
+    onEvent: handleGameEvent,
+  });
+  prepareMatchScreen(true);
+  const panels = [buildPanel(0, info[0], input), buildFriendTag(info[1])];
+  $('#panels').replaceChildren(panels[0].root);
+  $('#screen-match').appendChild(panels[1].root);
+  o.wantRematch = false;
+  o.friendWantsRematch = false;
+  app.match = {
+    game, cpu: null, info, panels, cpuMode: false, remote: true, choices, resultTimer: null, recorded: false,
+    startedAt: performance.now(), glassesCount: 0, reported: false, problemIndex: -1,
+    eventProps: matchProps({ difficulty: sala.nivel, ops: sala.ops }, 'online', input, mine.bichinho),
+  };
+  track('partida_iniciada', app.match.eventProps);
+  app.paused = false;
+  showScreen('match');
+  announce('Partida começando. Você contra seu amigo.');
+}
+
+function onRope(msg) {
+  const m = app.match;
+  const o = app.online;
+  if (!m?.remote || m.game.state === 'over') return;
+  m.game.setRope(o.voce === 0 ? msg.valor : -msg.valor);
+  if (Array.isArray(msg.acertos)) m.game.players[1].correct = msg.acertos[1 - o.voce] ?? 0;
+  if (msg.lado !== o.voce) { // acerto do amigo (o meu já animou na hora)
+    audio.playSfx('pull');
+    renderer.trigger(1, 'pull');
+    flashFriend('Acertou!', 'good');
+    announce('Seu amigo acertou!');
+  }
+}
+
+function onFriendWrong(msg) {
+  const m = app.match;
+  if (!m?.remote || msg.lado === app.online.voce) return;
+  m.game.players[1].wrong += 1;
+  flashFriend('Errou!', 'bad');
+}
+
+function onFriendGlasses(msg) {
+  const m = app.match;
+  if (!m?.remote || msg.lado === app.online.voce) return;
+  m.game.players[1].glasses = Boolean(msg.on);
+  audio.playSfx(msg.on ? 'glassesOn' : 'glassesOff');
+  renderer.trigger(1, msg.on ? 'glassesOn' : 'glassesOff');
+  announce(msg.on ? 'Seu amigo pôs os óculos.' : 'Seu amigo tirou os óculos.');
+}
+
+function onServerFinish(msg) {
+  const m = app.match;
+  const o = app.online;
+  if (!m?.remote) return;
+  app.dialog?.cancel();
+  if (msg.motivo === 'saiu') o.friendLeft = true;
+  const winner = msg.vencedor === null || msg.vencedor === undefined ? null : (msg.vencedor === o.voce ? 0 : 1);
+  m.game.finish(winner);
+}
+
+function onFriendRematch(msg) {
+  const o = app.online;
+  if (msg.lado === o.voce) return;
+  o.friendWantsRematch = true;
+  if (app.screen === 'result') renderResultButtons();
+}
+
+function onFriendLeft() {
+  const o = app.online;
+  if (app.screen === 'lobby') { // o convidado saiu; a sala continua aberta
+    announce(erroTexto('saiu'));
+    renderLobby();
+  } else if (app.screen === 'join') { // o anfitrião saiu: a sala fechou
+    showOnlineError('saiu', { report: false });
+  } else if (app.screen === 'match' && app.match?.remote) {
+    o.friendLeft = true;
+    app.dialog?.cancel();
+    app.match.game.finish(null);
+  } else if (app.screen === 'result') {
+    o.friendLeft = true;
+    renderResultButtons();
+  }
+}
+
+function requestRematch() {
+  const o = app.online;
+  if (!o || o.wantRematch || o.friendLeft) return;
+  o.wantRematch = true;
+  sendOnline('revanche');
+  track('revanche', { modo: 'online', nivel: o.sala?.nivel });
+  renderResultButtons();
+}
+
+/** "Sair" na partida online: pede confirmação e fecha a conexão (não existe pausa). */
+async function quitOnline() {
+  const m = app.match;
+  if (!m?.remote || app.screen !== 'match' || m.game.state === 'over' || app.dialog) return;
+  const choice = await showDialog({
+    title: 'Sair da partida?',
+    text: 'Seu amigo vai ficar sem adversário.',
+    buttons: [
+      { label: 'Continuar jogando', value: 'resume', className: 'btn-green' },
+      { label: 'Sim, sair', value: 'quit', className: 'btn-red' },
+    ],
+  });
+  if (choice !== 'quit' || app.match !== m || app.screen !== 'match' || m.game.state === 'over') return;
+  trackAbandon();
+  leaveOnline();
+  app.match = null;
+  showScreen('menu');
 }
 
 // ---------- inicialização ----------
 
 function onAction(action) {
   const handlers = {
-    'play-cpu': () => { app.settings.mode = 'cpu'; persistSettings(); showScreen('setup'); },
-    'play-2p': () => { app.settings.mode = '2p'; persistSettings(); showScreen('setup'); },
+    'play-cpu': () => { app.setupOnline = false; app.settings.mode = 'cpu'; persistSettings(); showScreen('setup'); },
+    'play-2p': () => { app.setupOnline = false; app.settings.mode = '2p'; persistSettings(); showScreen('setup'); },
     stats: () => showScreen('stats'),
-    menu: () => { app.match = null; showScreen('menu'); },
+    menu: () => { leaveOnline(); app.setupOnline = false; app.match = null; showScreen('menu'); },
+    online: () => { leaveOnline(); app.setupOnline = false; app.match = null; showScreen('online'); },
+    'online-create': () => { leaveOnline(); app.setupOnline = true; showScreen('setup'); },
+    'online-create-go': createRoom,
+    'online-join': () => { leaveOnline(); app.joinPin = ''; showScreen('join'); },
+    'online-join-go': joinRoom,
+    'online-ready': readyToPlay,
+    'online-start': () => sendOnline('comecar'),
+    'online-invite': inviteFriend,
+    'online-leave': () => { leaveOnline(); showScreen('online'); },
+    'online-rematch': requestRematch,
     start: startMatch,
     again: () => {
       track('revanche', { modo: app.settings.mode, nivel: app.settings.difficulty });
@@ -808,6 +1444,8 @@ function init() {
   });
   document.addEventListener('pointerdown', () => audio.unlockAudio());
   $('#screen-setup').addEventListener('click', onSetupClick);
+  $('#cards-guest').addEventListener('click', onGuestCardClick);
+  initJoinKeypad();
   $('#btn-pause').addEventListener('click', pauseGame);
   $('#btn-quit').addEventListener('click', quitGame);
   $('#btn-rotate-ok').addEventListener('click', () => { app.rotateDismissed = true; updateRotateHint(); });
@@ -827,6 +1465,7 @@ function init() {
   renderMute();
   initAnalytics();
   showScreen('menu');
+  openFromInviteLink();
   requestAnimationFrame((t) => { lastFrame = t; frame(t); });
 }
 

@@ -93,6 +93,9 @@ const SFX = {
   glassesOff(t) {
     tone(520, t, 0.16, { type: 'triangle', gain: 0.4, slideTo: 260 });
   },
+  join(t) {
+    [84, 91].forEach((m, i) => tone(midiToHz(m), t + i * 0.1, 0.22, { type: 'triangle', gain: 0.5 }));
+  },
   click(t) {
     tone(880, t, 0.07, { type: 'square', gain: 0.25 });
   },
