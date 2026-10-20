@@ -114,16 +114,21 @@ Se o aparelho tiver escolhido **"Não enviar estatísticas"**, o PostHog nem é 
 | `visita_dia` | 1ª abertura do dia neste aparelho | — |
 | `visita_mes` | 1ª abertura do mês neste aparelho | — |
 | `partida_iniciada` | toque em "Começar" (online: início da contagem) | `modo` (`cpu`/`2p`/`online`), `nivel`, `entrada` (`opcoes`/`teclado`), `op_soma`, `op_subtracao`, `op_multiplicacao`, `op_divisao`, `bichinho` |
-| `partida_terminada` | fim da partida | as de cima + `resultado` (`vitoria`/`derrota`/`vencedor_j1`/`vencedor_j2`; online: `vitoria`/`derrota`/`amigo_saiu`), `duracao_s`, `acertos`, `erros`, `acertos_<op>`, `erros_<op>`, `tempo_medio_s`, `usou_oculos`, `ativacoes_oculos` |
+| `partida_terminada` | fim da partida | as de cima + `resultado` (`vitoria`/`derrota`/`vencedor_j1`/`vencedor_j2`; online: `vitoria`/`derrota`/`amigo_saiu`), `duracao_s`, `acertos`, `erros`, `acertos_<op>`, `erros_<op>`, `tempo_medio_s`, `usou_oculos`, `ativacoes_oculos`, `noite` (`true` se o céu já tinha escurecido, a partir dos 10 min de jogo) |
 | `partida_abandonada` | "Sair" ou fechar a aba no meio | as de `partida_iniciada` + `duracao_s`, `acertos`, `erros` |
 | `oculos_ligados` | botão Óculos ligado | `nivel`, `op` (da conta atual) |
 | `revanche` | "Jogar de novo" (online: "Revanche") | `modo`, `nivel` |
 | `sala_criada` | o anfitrião recebe o PIN | `nivel`, `entrada`, `op_soma`, `op_subtracao`, `op_multiplicacao`, `op_divisao`, `bichinho` (nunca o PIN) |
 | `sala_entrou` | o convidado entra na sala | `nivel` |
 | `sala_erro` | erro ao criar/entrar/jogar online | `codigo` (`sala-inexistente`, `sala-cheia`, `versao`, `mensagem-invalida`, `conexao`) |
+| `anoiteceu` | o jogo chega aos 10 min de uso e o céu escurece (uma vez por dia de jogo) | — |
+| `hora_de_dormir` | a tela "Os bichinhos foram dormir" aparece (aos 15 min, depois de a partida acabar) | — |
 | `estatisticas_zeradas` | botão zerar | — |
 
 Nenhuma propriedade contém texto livre ou dado da criança.
+
+O tempo de uso que alimenta `anoiteceu` e `hora_de_dormir` fica só no `localStorage` do aparelho
+(`duelo-de-contas:sono:v1`) e não é enviado: os dois eventos não têm propriedades além das automáticas.
 
 ## 4. Painel "Duelo de Contas"
 

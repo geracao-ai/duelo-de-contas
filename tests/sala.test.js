@@ -473,3 +473,68 @@ test('origem permitida', () => {
   for (const o of ok) assert.equal(origemPermitida(o), true, o);
   for (const o of ruim) assert.equal(origemPermitida(o), false, String(o));
 });
+
+// ---------- tchau (hora de dormir) ----------
+
+test('tchau do convidado no fim da partida: o anfitrião recebe saiu com motivo dormir', () => {
+  const x = jogando();
+  for (let n = 0; n < 5; n++) x.envia(0, { t: 'acertei', n });
+  x.limpa();
+  x.envia(1, { t: 'tchau', motivo: 'dormir' });
+  assert.deepEqual(x.recebidas[0], [{ t: 'saiu', lado: 1, motivo: 'dormir' }]);
+  assert.equal(x.recebidas[1].length, 0); // quem saiu não recebe nada
+  assert.equal(x.state, null);
+  assert.ok(x.fechados.includes(0) && x.fechados.includes(1));
+});
+
+test('tchau do anfitrião: a sala fecha e o convidado recebe saiu com motivo dormir', () => {
+  const x = salaPronta();
+  x.limpa();
+  x.envia(0, { t: 'tchau', motivo: 'dormir' });
+  assert.deepEqual(x.recebidas[1], [{ t: 'saiu', lado: 0, motivo: 'dormir' }]);
+  assert.equal(x.state, null);
+  assert.deepEqual([...new Set(x.fechados)].sort(), [0, 1]);
+});
+
+test('tchau no meio da partida: saiu com motivo e depois fim saiu', () => {
+  const x = jogando();
+  x.limpa();
+  x.envia(0, { t: 'tchau', motivo: 'dormir' });
+  assert.deepEqual(x.recebidas[1], [
+    { t: 'saiu', lado: 0, motivo: 'dormir' },
+    { t: 'fim', vencedor: null, motivo: 'saiu' },
+  ]);
+});
+
+test('tchau do convidado na espera: vaga liberada e saiu com motivo', () => {
+  const x = salaPronta();
+  x.limpa();
+  x.envia(1, { t: 'tchau', motivo: 'dormir' });
+  assert.deepEqual(x.tipos(0), ['sala', 'saiu']);
+  assert.deepEqual(x.ultima(0), { t: 'saiu', lado: 1, motivo: 'dormir' });
+  assert.equal(x.state.jogadores[1], null);
+});
+
+test('tchau sem motivo ou com motivo desconhecido é uma saída comum (saiu sem motivo)', () => {
+  for (const extra of [{}, { motivo: 'outra-coisa' }, { motivo: 42 }]) {
+    const x = salaPronta();
+    x.limpa();
+    x.envia(0, { t: 'tchau', ...extra });
+    assert.deepEqual(x.recebidas[1], [{ t: 'saiu', lado: 0 }]);
+  }
+});
+
+test('tchau antes de a sala existir só fecha aquele lado, sem erro', () => {
+  const x = sim();
+  x.envia(0, { t: 'tchau', motivo: 'dormir' });
+  assert.equal(x.state, null);
+  assert.deepEqual(x.fechados, [0]);
+  assert.deepEqual(x.recebidas[0], []);
+});
+
+test('saída por queda de conexão continua sem motivo (compatível com clientes antigos)', () => {
+  const x = salaPronta();
+  x.limpa();
+  x.sai(1);
+  assert.deepEqual(x.ultima(0), { t: 'saiu', lado: 1 });
+});

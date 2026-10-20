@@ -95,6 +95,7 @@ js/render.js        cenário, corda, animações e partículas no canvas
 js/characters.js    os 6 bichinhos desenhados com formas do canvas
 js/audio.js         efeitos e melodia sintetizados com WebAudio, botão de mudo
 js/stats.js         estatísticas e preferências no localStorage
+js/sono.js          hora de dormir: tempo de jogo, fases dia/noite/dormindo (puro, testado)
 js/analytics.js     estatísticas anônimas (PostHog), contagem de visitas e opt-out
 js/keypad.js        teclado numérico na tela
 js/choices.js       as 4 opções de resposta do nível Fácil
@@ -107,6 +108,16 @@ assets/             vídeo de demonstração, prévia animada e imagem de compar
 tools/              scripts que geram o vídeo (tools/demo), a imagem (tools/og) e testam o duelo online (tools/online)
 .github/workflows/  CI (testes e build) e redirecionamento no GitHub Pages
 ```
+
+## Hora de dormir
+
+Para limitar o tempo de tela de um jeito lúdico, o jogo **anoitece aos 10 minutos de uso** (céu azul-escuro com estrelas, lua no lugar do sol) e **os bichinhos vão dormir aos 15**. Uma partida em andamento termina normalmente; depois do resultado aparece a tela "Os bichinhos foram dormir", com os bichinhos deitados e o tempo que falta para acordarem. Só o botão **Som** e o link **Privacidade e termos** continuam disponíveis. Depois de 1 hora o jogo volta de dia, com o tempo zerado (1 hora sem jogar também zera o contador).
+
+- Só conta o tempo com o jogo visível na tela (Page Visibility); recarregar a página não zera.
+- Não há como impedir que alguém adiante o relógio do aparelho (ou limpe os dados do site): o limite é só do lado do cliente e serve como incentivo, não como controle parental.
+- O tempo fica guardado só no aparelho (`localStorage`, chave `duelo-de-contas:sono:v1`), nunca é enviado, e vale por aparelho (não há contas).
+- No duelo online o jogador sai da sala depois da partida com `{ "t": "tchau", "motivo": "dormir" }` e o amigo vê "Seu amigo foi dormir.".
+- Para testar sem esperar: `http://localhost:8000/?sono=rapido` (só em `localhost`) anoitece em 10 s, dorme aos 15 s e acorda 30 s depois.
 
 ## Privacidade e estatísticas
 

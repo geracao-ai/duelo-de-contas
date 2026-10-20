@@ -135,9 +135,11 @@ export function abandonProps(base, humans, seconds) {
 
 /**
  * Propriedades de `partida_terminada`. `humans`: jogadores humanos (1 contra o
- * computador e online, 2 em 2 jogadores). `winner`: lado vencedor (0 ou 1; null se o amigo saiu).
+ * computador e online, 2 em 2 jogadores). `noite`: terminou depois de anoitecer. `winner`: lado vencedor (0 ou 1; null se o amigo saiu).
  */
-export function finishProps(base, humans, { winner, seconds, glassesActivations = 0 }) {
+export function finishProps(base, humans, {
+  winner, seconds, glassesActivations = 0, noite = false,
+}) {
   const { total, mean } = tally(humans);
   let resultado;
   if (base.modo === 'online') {
@@ -153,6 +155,7 @@ export function finishProps(base, humans, { winner, seconds, glassesActivations 
     tempo_medio_s: round1(mean),
     usou_oculos: glassesActivations > 0,
     ativacoes_oculos: glassesActivations,
+    noite: Boolean(noite), // o céu já tinha escurecido (a partir dos 10 min de jogo)
   };
 }
 

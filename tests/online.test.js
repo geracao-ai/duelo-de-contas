@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createRng } from '../js/rng.js';
 import { Game } from '../js/game.js';
 import {
-  SERVIDOR_PADRAO, servidorDaUrl, wsUrl, pinDaUrl, conviteUrl, conviteTexto, erroTexto, conectar, PING_MS, SEM_PONG_MS, salaValida,
+  SERVIDOR_PADRAO, servidorDaUrl, wsUrl, pinDaUrl, conviteUrl, conviteTexto, erroTexto, conectar, PING_MS, SEM_PONG_MS, salaValida, codigoDeSaida,
 } from '../js/online.js';
 import { matchProps, finishProps, salaCriadaProps, salaErroProps } from '../js/analytics.js';
 import { emptyStats, recordMatch } from '../js/stats.js';
@@ -342,4 +342,12 @@ test('analytics online: modo, resultado e eventos de sala', () => {
   assert.equal(criada.op_divisao, true);
   assert.ok(!('modo' in criada));
   assert.deepEqual(salaErroProps('sala-cheia'), { codigo: 'sala-cheia' });
+});
+
+test('amigo que foi dormir: saiu com motivo dormir mostra o texto certo', () => {
+  assert.equal(codigoDeSaida({ t: 'saiu', lado: 1, motivo: 'dormir' }), 'dormiu');
+  assert.equal(erroTexto('dormiu'), 'Seu amigo foi dormir.');
+  assert.equal(codigoDeSaida({ t: 'saiu', lado: 1 }), 'saiu');
+  assert.equal(codigoDeSaida({ t: 'saiu', lado: 1, motivo: 'x' }), 'saiu');
+  assert.equal(codigoDeSaida(undefined), 'saiu');
 });

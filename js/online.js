@@ -17,6 +17,7 @@ export const ERRO_TEXTOS = {
   versao: 'Atualize a página para jogar junto',
   conexao: 'Não deu para conectar. Confira a internet e tente de novo.',
   saiu: 'Seu amigo saiu da sala.',
+  dormiu: 'Seu amigo foi dormir.',
   'bichinho-igual': 'Esse bichinho já foi escolhido pelo seu amigo. Escolha outro!',
   'mensagem-invalida': 'Algo deu errado. Vamos tentar de novo.',
   ociosa: 'A sala fechou porque ficou parada muito tempo.',
@@ -41,6 +42,9 @@ export function salaValida(sala) {
   if (!Array.isArray(sala.jogadores) || sala.jogadores.length !== 2) return false;
   return sala.jogadores.every((j) => j === null || ANIMAL_IDS.includes(j?.bichinho));
 }
+
+/** Código do texto para quando o amigo sai: `dormiu` se o `saiu` veio com `motivo: 'dormir'`. */
+export const codigoDeSaida = (msg) => (msg?.motivo === 'dormir' ? 'dormiu' : 'saiu');
 
 /** Converte a base http(s) em ws(s) e monta `/ws?criar=1` ou `/ws?pin=NNNNNN`. */
 export function wsUrl(base, { pin = null } = {}) {

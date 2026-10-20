@@ -90,9 +90,11 @@ export function alarme(state, agora) {
   return vazio(s);
 }
 
-// Alguém saiu (fechou ou caiu).
-export function sair(state, lado, agora) {
+// Alguém saiu (fechou, caiu ou avisou com `tchau`). `motivo: 'dormir'` (hora de dormir) vai junto
+// no `saiu` para o outro lado mostrar "Seu amigo foi dormir."; sem motivo, a mensagem é a de sempre.
+export function sair(state, lado, agora, motivo) {
   if (!state) return vazio(null);
+  const saiu = (de) => (motivo === 'dormir' ? { t: 'saiu', lado: de, motivo } : { t: 'saiu', lado: de });
   const s = structuredClone(state);
   avancar(s, agora);
   const outro = 1 - lado;
@@ -101,7 +103,7 @@ export function sair(state, lado, agora) {
     // Anfitrião saiu: a sala fecha.
     const send = [];
     if (s.jogadores[1]) {
-      send.push({ to: 1, msg: { t: 'saiu', lado: 0 } });
+      send.push({ to: 1, msg: saiu(0) });
       if (noMeio) send.push({ to: 1, msg: { t: 'fim', vencedor: null, motivo: 'saiu' } });
     }
     return { state: null, send, close: [1] };
@@ -110,12 +112,12 @@ export function sair(state, lado, agora) {
   const send = [];
   if (s.estado === 'espera') {
     s.jogadores[1] = null;
-    send.push({ to: outro, msg: msgSala(s, 0) }, { to: outro, msg: { t: 'saiu', lado: 1 } });
+    send.push({ to: outro, msg: msgSala(s, 0) }, { to: outro, msg: saiu(1) });
     return { state: s, send, close: [] };
   }
   // Depois que a partida começou, a sala fecha: o anfitrião já está no resultado
   // e um convidado que voltasse pelo link ficaria esperando para sempre.
-  send.push({ to: outro, msg: { t: 'saiu', lado: 1 } });
+  send.push({ to: outro, msg: saiu(1) });
   if (noMeio) send.push({ to: outro, msg: { t: 'fim', vencedor: null, motivo: 'saiu' } });
   return { state: null, send, close: [0] };
 }
@@ -141,6 +143,9 @@ export function tratar(state, lado, texto, agora, opcoes = {}) {
   const s = state ? structuredClone(state) : null;
   if (s) avancar(s, agora);
 
+  // `tchau` antes de a sala existir: não há ninguém para avisar, só fecha este lado.
+  if (!s && m.t === 'tchau') return { state: null, send: [], close: [lado] };
+
   // Sala ainda não criada: só `criar` do anfitrião vale.
   if (!s) {
     if (lado !== 0 || m.t !== 'criar') return erro(null, lado, 'mensagem-invalida');
@@ -163,6 +168,12 @@ export function tratar(state, lado, texto, agora, opcoes = {}) {
       atividade: agora,
     };
     return { state: nova, send: [{ to: 0, msg: msgSala(nova, 0) }], close: [] };
+  }
+
+  // `tchau` (opcional `motivo: 'dormir'`): sair de propósito, como se a conexão tivesse fechado.
+  if (m.t === 'tchau') {
+    const r = sair(s, lado, agora, m.motivo === 'dormir' ? 'dormir' : undefined);
+    return { ...r, close: [...r.close, lado] };
   }
 
   s.atividade = agora;

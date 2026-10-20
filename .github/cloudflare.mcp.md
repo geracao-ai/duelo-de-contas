@@ -102,8 +102,9 @@ Riscos aceitos (por enquanto):
 
 - O `Origin` só barra navegadores: um script pode testar PINs ou gastar a cota diária. Se isso
   acontecer, criar uma regra de *Rate limiting* na Cloudflare para `/ws` (não exige código).
-- **Prévias do Worker** estão desligadas. Se forem religadas, o `wrangler.jsonc` precisa de um bloco
-  `"previews": {}` (exigido pelo `wrangler preview`).
+- **Prévias do Worker** estão desligadas. O *Previews Base* já está alinhado (Root directory `worker`,
+  Build command vazio, `npx wrangler preview`). Se forem religadas, falta só o bloco `"previews": {}`
+  no `worker/wrangler.jsonc` (exigido pelo `wrangler preview`).
 
 Testes: `npm test` (regras e Origin) e, com `cd worker && npm ci && npx wrangler dev`, o teste de
 ponta a ponta `node tools/online/smoke.mjs`.
@@ -147,4 +148,4 @@ Com o conector **Cloudflare API**:
 - [x] Durable Object no Worker e permissão de acesso do jogo (`duelo-de-contas.pages.dev`) ao
       Worker (lista de `Origin` em `worker/src/origem.js`).
 - [x] Worker: *Root directory* `worker` e comandos da tabela acima (ajustados pela API).
-- [ ] Testar o duelo online em dois aparelhos reais depois do merge.
+- [x] Duelo online testado em dois aparelhos reais depois do merge (2026-10-20): funcionou.

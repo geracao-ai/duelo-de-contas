@@ -172,7 +172,14 @@ function drawEyes(ctx, a, s, pose, t) {
   const blinking = (t + a.id.length) % 4.2 < 0.13;
   for (const side of [-1, 1]) {
     const ex = side * eyeX;
-    if (pose.eyes === 'happy') {
+    if (pose.eyes === 'closed') { // dormindo: um risquinho curvado para baixo
+      ctx.beginPath();
+      ctx.arc(ex, eyeY - 0.1 * s, radius * 0.8, 0.12 * Math.PI, 0.88 * Math.PI);
+      ctx.lineWidth = 0.1 * s;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = OUTLINE;
+      ctx.stroke();
+    } else if (pose.eyes === 'happy') {
       ctx.beginPath();
       ctx.arc(ex, eyeY + 0.08 * s, radius * 0.75, 1.12 * Math.PI, 1.88 * Math.PI);
       ctx.lineWidth = 0.1 * s;
@@ -277,6 +284,9 @@ function drawMouth(ctx, a, s, pose) {
       ctx.arc(0, my + 0.28 * s, 0.2 * s, 1.15 * Math.PI, 1.85 * Math.PI);
       ctx.stroke();
       break;
+    case 'sleep': // boquinha pequena e relaxada, que "respira"
+      ellipse(ctx, 0, my + 0.02 * s, 0.1 * s, (0.05 + 0.02 * Math.sin(pose.breath ?? 0)) * s, '#7a1f2f', 0.04 * s);
+      break;
     default:
       if (a.id === 'sapo') {
         ctx.beginPath();
@@ -289,7 +299,7 @@ function drawMouth(ctx, a, s, pose) {
         ctx.stroke();
       }
   }
-  if (a.id === 'coelho' && pose.mouth !== 'sad' && pose.mouth !== 'grin') {
+  if (a.id === 'coelho' && pose.mouth !== 'sad' && pose.mouth !== 'grin' && pose.mouth !== 'sleep') {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(-0.09 * s, my + 0.04 * s, 0.18 * s, 0.17 * s);
     ctx.lineWidth = 0.03 * s;
@@ -325,6 +335,44 @@ function armTargets(pose, s, t, rope) {
   }
 }
 
+/**
+ * Bichinho dormindo: deitado de bruços, virado para +x, de olhos fechados e com a cabeça apoiada no chão.
+ * Os pés ficam na origem, como nas outras poses; a figura ocupa uns 3 s de largura por 1,9 s de altura.
+ */
+function drawSleeping(ctx, a, s, t) {
+  const breath = t * 1.7;
+  const pose = { sit: 0, eyes: 'closed', mouth: 'sleep', breath };
+  const rise = 1 + Math.sin(breath) * 0.025; // a barriguinha sobe e desce devagar
+
+  // corpo deitado: gira 90° em volta dos pés e sobe para encostar no chão
+  ctx.save();
+  ctx.translate(0, -0.74 * s);
+  ctx.rotate(Math.PI / 2);
+  ctx.scale(1, rise);
+  drawTail(ctx, a, s, pose);
+  drawLegs(ctx, a, s, pose);
+  drawBody(ctx, a, s, pose);
+  ctx.restore();
+
+  // patinhas esticadas à frente, por baixo do queixo
+  ellipse(ctx, 1.7 * s, -0.2 * s, 0.46 * s, 0.19 * s, a.limb, 0.05 * s);
+  ellipse(ctx, 1.35 * s, -0.12 * s, 0.4 * s, 0.17 * s, a.limb, 0.05 * s);
+
+  // cabeça levemente inclinada para trás (as orelhas caem sobre o corpo)
+  ctx.save();
+  ctx.translate(1.8 * s, -0.95 * s);
+  ctx.rotate(-0.22);
+  ctx.translate(0, a.id === 'sapo' ? 1.9 * s : 1.95 * s);
+  if (a.id === 'sapo') drawFrogBumps(ctx, a, s);
+  else drawEarsBehind(ctx, a, s);
+  drawHead(ctx, a, s);
+  drawBlush(ctx, a, s);
+  drawEyes(ctx, a, s, pose, t);
+  drawNose(ctx, a, s);
+  drawMouth(ctx, a, s, pose);
+  ctx.restore();
+}
+
 // ---------- API pública ----------
 
 /**
@@ -340,6 +388,15 @@ function armTargets(pose, s, t, rope) {
 export function drawCharacter(ctx, animalId, x, y, s, opts = {}) {
   const { facing = 1, state = 'idle', t = 0, stateT = 0, rope = null, glasses = false } = opts;
   const a = getAnimal(animalId);
+  if (state === 'sleep') {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(facing, 1);
+    ellipse(ctx, 1.0 * s, 0.02 * s, 1.9 * s, 0.2 * s, 'rgba(0, 20, 30, 0.35)');
+    drawSleeping(ctx, a, s, t);
+    ctx.restore();
+    return;
+  }
   const pose = computePose(state, t, stateT);
   const ropeLocal = rope
     ? { x: (rope.x - x) * facing, y: rope.y - y + pose.lift * s }
