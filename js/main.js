@@ -10,6 +10,9 @@ import { buildHelpModel, fitLayout, drawHelpBoard } from './visual-help.js';
 import * as audio from './audio.js';
 import * as stats from './stats.js';
 import {
+  initAnalytics, track, matchProps, finishProps, abandonProps, OP_EVENT_NAMES,
+} from './analytics.js';
+import {
   OPERATIONS, DIFFICULTIES, OP_SYMBOLS, OP_NAMES, spokenProblem,
 } from './problems.js';
 
@@ -163,6 +166,7 @@ async function openPauseMenu({ title, text, resumeLabel, quitLabel }) {
   });
   app.paused = false;
   if (choice === 'quit') {
+    trackAbandon();
     app.match = null;
     showScreen('menu');
   }
@@ -412,10 +416,34 @@ function startMatch() {
   $('#panels').replaceChildren(...panels.map((p) => p.root));
   app.match = {
     game, cpu, info, panels, cpuMode, choices, resultTimer: null, recorded: false,
+    startedAt: performance.now(), glassesCount: 0, reported: false,
+    eventProps: matchProps(s, cpuMode, input, s.p1),
   };
+  track('partida_iniciada', app.match.eventProps);
   app.paused = false;
   showScreen('match');
   announce(`Partida começando. ${info[0].tag} contra ${info[1].tag}.`);
+}
+
+// ---------- estatísticas anônimas ----------
+
+const humanPlayers = (m) => (m.cpuMode ? [m.game.players[0]] : m.game.players);
+const elapsedSeconds = (m) => (performance.now() - m.startedAt) / 1000;
+
+/** Partida interrompida (Sair ou fechar a página) antes de terminar. */
+function trackAbandon(beacon = false) {
+  const m = app.match;
+  if (!m || m.reported || m.game.state === 'over') return;
+  m.reported = true;
+  track('partida_abandonada', abandonProps(m.eventProps, humanPlayers(m), elapsedSeconds(m)), { beacon });
+}
+
+function trackFinish(winner) {
+  const m = app.match;
+  m.reported = true;
+  track('partida_terminada', finishProps(m.eventProps, humanPlayers(m), {
+    winner, seconds: elapsedSeconds(m), glassesActivations: m.glassesCount,
+  }));
 }
 
 function whoName(side) {
@@ -484,7 +512,13 @@ function onWrong(payload) {
 }
 
 function onGlasses({ side, on }) {
-  const panel = app.match.panels[side];
+  const m = app.match;
+  if (on) {
+    m.glassesCount += 1;
+    const op = m.game.players[side].problem?.op;
+    track('oculos_ligados', { nivel: app.settings.difficulty, op: OP_EVENT_NAMES[op] });
+  }
+  const panel = m.panels[side];
   panel.glassesButton?.setAttribute('aria-pressed', String(on));
   panel.boardKey = null;
   audio.playSfx(on ? 'glassesOn' : 'glassesOff');
@@ -504,6 +538,7 @@ function onWin({ side }) {
   announce(`${whoName(side)} venceu a partida!`);
   stats.recordMatch(app.stats, { mode: app.settings.mode, humanWon: side === 0 });
   stats.saveStats(app.stats);
+  trackFinish(side);
 }
 
 function perform(side, type, digit) {
@@ -631,6 +666,7 @@ async function resetStats() {
   });
   if (choice !== 'reset') return;
   app.stats = stats.resetStats();
+  track('estatisticas_zeradas');
   renderStats();
   announce('Estatísticas zeradas.');
 }
@@ -752,7 +788,10 @@ function onAction(action) {
     stats: () => showScreen('stats'),
     menu: () => { app.match = null; showScreen('menu'); },
     start: startMatch,
-    again: startMatch,
+    again: () => {
+      track('revanche', { modo: app.settings.mode, nivel: app.settings.difficulty });
+      startMatch();
+    },
     'reset-stats': resetStats,
   };
   handlers[action]?.();
@@ -776,6 +815,7 @@ function init() {
     $(id).addEventListener('click', () => { audio.toggleMuted(); renderMute(); });
   }
   window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('pagehide', () => trackAbandon(true));
   window.addEventListener('resize', () => { renderer.resize(); updateRotateHint(); layout(); });
   window.addEventListener('orientationchange', () => { renderer.resize(); updateRotateHint(); layout(); });
   if (typeof ResizeObserver !== 'undefined') {
@@ -785,6 +825,7 @@ function init() {
     observer.observe($('.hud'));
   }
   renderMute();
+  initAnalytics();
   showScreen('menu');
   requestAnimationFrame((t) => { lastFrame = t; frame(t); });
 }

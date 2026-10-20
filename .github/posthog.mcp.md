@@ -127,6 +127,7 @@ Anotação no painel: data de lançamento das 4 opções no Fácil (2026-10-19),
 
 ## Status
 
-- [ ] Configuração do projeto (seção 1) — **ainda não aplicada**; aplicar com aprovação do dono.
-- [ ] SDK e eventos no jogo (seções 2 e 3).
+- [x] Configuração do projeto (seção 1) — **aplicada em 2026-10-20** pelo MCP e conferida com `project-get`.
+- [x] SDK e eventos no jogo (seções 2 e 3) — `js/analytics.js` e `js/main.js`; termos e opt-out em `termos.html`.
+      Em `localhost` nada é enviado, a não ser com `?analytics=1`; o sinal Global Privacy Control também desliga o envio.
 - [ ] Painel (seção 4) — depois que os primeiros eventos chegarem.

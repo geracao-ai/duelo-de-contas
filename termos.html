@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#4aa8ff">
+  <meta name="description" content="Como o Duelo de Contas trata a privacidade: estatísticas anônimas, sem cadastro e sem dados de crianças.">
+  <title>Privacidade e termos — Duelo de Contas</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23ffd23f'/%3E%3Ctext x='50' y='66' font-size='54' text-anchor='middle' font-family='sans-serif' font-weight='900' fill='%233b2a20'%3E%2B%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="legal">
+  <p class="legal-back"><a href="./">← Voltar ao jogo</a></p>
+
+  <main class="card legal-card">
+    <h1>Privacidade e termos</h1>
+    <p class="legal-updated">Última atualização: 20 de outubro de 2026</p>
+
+    <h2>O que é o Duelo de Contas</h2>
+    <p>
+      O Duelo de Contas é um jogo gratuito de cabo de guerra da matemática para crianças de 6 a 10 anos.
+      Ele funciona direto no navegador, sem cadastro e sem login.
+    </p>
+
+    <h2>O que coletamos</h2>
+    <p>Para saber o que melhorar no jogo, enviamos estatísticas anônimas:</p>
+    <ul>
+      <li>dados da partida: modo (contra o computador ou 2 jogadores), nível, operações escolhidas, acertos e erros (por operação), duração, tempo médio de resposta, uso dos óculos e o bichinho escolhido;</li>
+      <li>tipo de aparelho, sistema, navegador e página aberta;</li>
+      <li>país e estado aproximados, calculados a partir do endereço de rede <strong>antes</strong> de ele ser descartado;</li>
+      <li>uma contagem de visitas por dia e por mês, feita <strong>sem nenhum identificador</strong>: o jogo só guarda neste aparelho a data da última visita.</li>
+    </ul>
+
+    <h2>O que NÃO coletamos</h2>
+    <ul>
+      <li>nome, e-mail, idade, escola ou qualquer dado pessoal;</li>
+      <li>endereço IP: ele não fica armazenado;</li>
+      <li>gravação de tela, de cliques ou de teclado;</li>
+      <li>cookies de rastreamento ou identificadores que sigam a criança de um site para outro;</li>
+      <li>perfis de pessoas: não sabemos quem está jogando, nem se é a mesma criança de ontem.</li>
+    </ul>
+
+    <h2>Por que coletamos</h2>
+    <p>
+      Só para melhorar o jogo: ver quais contas são mais difíceis, se os níveis estão bons e se os óculos ajudam.
+      Não vendemos nem compartilhamos esses dados, e não usamos para propaganda.
+    </p>
+
+    <h2>Quem processa os dados</h2>
+    <ul>
+      <li><strong>PostHog</strong> (Estados Unidos): recebe e organiza as estatísticas anônimas;</li>
+      <li><strong>Cloudflare</strong>: hospeda o site e repassa as estatísticas ao PostHog.</li>
+    </ul>
+
+    <h2>Estatísticas guardadas no aparelho</h2>
+    <p>
+      A tela “Estatísticas” do jogo (partidas, acertos, erros, melhor sequência) fica <strong>somente neste aparelho</strong>,
+      no armazenamento do navegador. Ela não é enviada a ninguém. Para apagar, use o botão
+      “Zerar estatísticas” dentro do jogo ou limpe os dados do site nas configurações do navegador.
+    </p>
+
+    <h2>Crianças</h2>
+    <p>
+      Não pedimos cadastro, não há chat, não há contato com outros jogadores e não há anúncios.
+      Recomendamos que um adulto acompanhe as crianças menores.
+    </p>
+
+    <h2>Não quer enviar estatísticas?</h2>
+    <div class="optout-box">
+      <p class="optout-status" id="optout-status" role="status" aria-live="polite"></p>
+      <button class="btn btn-blue" type="button" id="optout-button">Não enviar estatísticas</button>
+    </div>
+    <p>
+      A escolha vale só para este aparelho e navegador. Se o navegador enviar o sinal
+      “Global Privacy Control”, nós também o respeitamos e não enviamos nada.
+    </p>
+
+    <h2>Contato</h2>
+    <p>
+      Dúvidas ou pedidos: <a href="mailto:lucascsilva@gmail.com">lucascsilva@gmail.com</a>.
+      O projeto é aberto: <a href="https://github.com/geracao-ai/duelo-de-contas">github.com/geracao-ai/duelo-de-contas</a>.
+    </p>
+
+    <p class="hint">
+      Este texto é informativo e pode mudar. A data da última atualização fica no topo da página.
+    </p>
+  </main>
+
+  <p class="legal-back"><a href="./">← Voltar ao jogo</a></p>
+
+  <script type="module">
+    import { isOptedOut, setOptOut } from './js/analytics.js';
+
+    const button = document.getElementById('optout-button');
+    const status = document.getElementById('optout-status');
+
+    function render() {
+      const off = isOptedOut();
+      button.textContent = off ? 'Voltar a enviar estatísticas' : 'Não enviar estatísticas';
+      button.className = `btn ${off ? 'btn-green' : 'btn-blue'}`;
+      status.textContent = off
+        ? 'Neste aparelho: o envio de estatísticas está desligado.'
+        : 'Neste aparelho: o envio de estatísticas anônimas está ligado.';
+    }
+
+    button.addEventListener('click', () => {
+      setOptOut(!isOptedOut());
+      render();
+    });
+    render();
+  </script>
+</body>
+</html>
