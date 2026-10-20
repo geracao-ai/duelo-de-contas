@@ -65,6 +65,26 @@ call project-settings-update {
 
 Depois, conferir com `call project-get {}`.
 
+### Transformação "Remover cidade (privacidade)"
+
+A GeoIP do PostHog também grava cidade, CEP e coordenadas. Prometemos só **país e estado**,
+então uma transformação (modelo `template-filter-properties`, ordem 2, depois da GeoIP) apaga o
+resto antes de o evento ser gravado:
+
+```text
+call cdp-functions-create {
+  "type": "transformation",
+  "template_id": "template-filter-properties",
+  "name": "Remover cidade (privacidade)",
+  "enabled": true,
+  "execution_order": 2,
+  "inputs": { "propertiesToFilter": { "value": "$geoip_city_name, $geoip_postal_code, $geoip_latitude, $geoip_longitude, $geoip_accuracy_radius, $geoip_time_zone, $set.<os mesmos>, $set_once.$initial_<os mesmos>" } }
+}
+```
+
+Criada em 2026-10-20 (id `01a1575a-491f-0000-300c-c2585bc58a7d`). Os poucos eventos de teste
+recebidos antes disso ainda têm a cidade.
+
 ## 2. Configuração do SDK no jogo
 
 ```js
@@ -130,4 +150,6 @@ Anotação no painel: data de lançamento das 4 opções no Fácil (2026-10-19),
 - [x] Configuração do projeto (seção 1) — **aplicada em 2026-10-20** pelo MCP e conferida com `project-get`.
 - [x] SDK e eventos no jogo (seções 2 e 3) — `js/analytics.js` e `js/main.js`; termos e opt-out em `termos.html`.
       Em `localhost` nada é enviado, a não ser com `?analytics=1`; o sinal Global Privacy Control também desliga o envio.
-- [ ] Painel (seção 4) — depois que os primeiros eventos chegarem.
+- [x] Primeiros eventos conferidos em 2026-10-20 (região = país/estado, sem `$ip`).
+- [x] Transformação que remove a cidade — **ativa** desde 2026-10-20.
+- [ ] Painel (seção 4).
