@@ -342,3 +342,29 @@ html, body {
 }
 
 .rotate-hint .btn { white-space: nowrap; min-height: 48px; padding: 6px 14px; }
+
+/* ---------- privacidade e termos ---------- */
+.privacy-link {
+  padding: 4px 12px; border-radius: 99px; background: var(--paper);
+  color: var(--ink-soft); font-size: 0.85rem; font-weight: 800; text-decoration: underline;
+}
+.privacy-link:hover { color: var(--ink); }
+.privacy-link:focus-visible { outline: 4px solid var(--ink); outline-offset: 2px; }
+
+/* termos.html é uma página de texto comum: rola e deixa selecionar */
+body.legal {
+  height: auto; min-height: 100%; overflow: auto; user-select: text; -webkit-user-select: text;
+  padding: 16px; background: #4aa8ff;
+}
+html:has(body.legal) { overflow: auto; height: auto; }
+.legal-card { margin: 0 auto 24px; width: min(760px, 100%); max-height: none; overflow: visible; font-size: 1.05rem; line-height: 1.5; }
+.legal-card h1 { margin: 0; font-size: clamp(1.5rem, 5vw, 2.2rem); line-height: 1.15; }
+.legal-card h2 { text-align: left; font-size: 1.3rem; margin-top: 8px; }
+.legal-card p, .legal-card ul { margin: 0; }
+.legal-card ul { padding-left: 1.3em; display: flex; flex-direction: column; gap: 6px; }
+.legal-card a { color: var(--blue-dark); font-weight: 800; }
+.legal-updated { color: var(--ink-soft); font-weight: 700; }
+.legal-back { display: inline-block; margin: 0 auto 12px; width: min(760px, 100%); }
+.legal-back a { display: inline-block; padding: 6px 14px; border-radius: 99px; background: var(--paper); color: var(--ink); font-weight: 800; }
+.optout-box { background: #fff; border: 3px solid var(--ink); border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.optout-status { font-weight: 800; }

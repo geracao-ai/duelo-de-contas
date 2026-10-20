@@ -67,6 +67,7 @@ Isso executa `node --test tests/*.test.js`. As versões recentes do Node (22+) n
 
 ```
 index.html          telas (menu, configuração, partida, resultado, estatísticas) e diálogos
+termos.html         privacidade e termos, com o botão "Não enviar estatísticas"
 css/style.css       visual, botões grandes e layouts responsivos
 js/main.js          inicialização, fluxo de telas, teclado físico e laço principal
 js/problems.js      gerador de contas e conferência de respostas (puro, testado)
@@ -76,6 +77,7 @@ js/render.js        cenário, corda, animações e partículas no canvas
 js/characters.js    os 6 bichinhos desenhados com formas do canvas
 js/audio.js         efeitos e melodia sintetizados com WebAudio, botão de mudo
 js/stats.js         estatísticas e preferências no localStorage
+js/analytics.js     estatísticas anônimas (PostHog), contagem de visitas e opt-out
 js/keypad.js        teclado numérico na tela
 js/choices.js       as 4 opções de resposta do nível Fácil
 js/visual-help.js   óculos: a conta desenhada em blocos na lousinha (modelo puro e desenho)
@@ -87,6 +89,12 @@ assets/             vídeo de demonstração, prévia animada e imagem de compar
 tools/              scripts que geram o vídeo (tools/demo) e a imagem (tools/og)
 .github/workflows/  CI (testes e build) e redirecionamento no GitHub Pages
 ```
+
+## Privacidade e estatísticas
+
+Para melhorar o jogo, o site envia estatísticas **anônimas** de uso ao PostHog (por um proxy no próprio domínio): modo, nível, operações, acertos e erros, duração, uso dos óculos e bichinho escolhido, mais aparelho, navegador e região aproximada. Não há cadastro, cookies de rastreamento, perfis, gravação de tela nem IP armazenado, e nenhuma propriedade contém texto livre. As estatísticas da tela "Estatísticas" ficam só no aparelho.
+
+Quem não quiser enviar nada usa o botão **"Não enviar estatísticas"** em [`termos.html`](termos.html) (a escolha fica no aparelho); o sinal Global Privacy Control também é respeitado. Em `localhost` nada é enviado, a não ser com `?analytics=1` na URL. Detalhes de configuração e a lista de eventos: [`.github/posthog.mcp.md`](.github/posthog.mcp.md).
 
 ## Publicação
 
