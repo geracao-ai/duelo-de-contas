@@ -12,10 +12,24 @@ Um GIF curto mostra a novidade funcionando, no estilo dos GIFs de lançamento: o
 - **Só para funcionalidades de destaque** (ex.: duelo online com PIN, modo novo, bichinho novo). Correção, ajuste visual pequeno ou mudança interna **não** ganha GIF.
 - Depois do merge e da publicação conferida, ou no PR, para o dono do projeto aprovar o roteiro antes de anunciar.
 
+## Dois estilos
+
+| Estilo | Como é | Quando usar |
+| --- | --- | --- |
+| `palco` (padrão) | Colorido, 1 ou 2 celulares, **título e subtítulo** no topo, círculos de toque. Página `tools/gif/palco.html`. | Divulgação para crianças e pais, redes sociais, funcionalidades de dois aparelhos (duelo online). |
+| `claude` | Mínimo e escuro: o jogo numa janela de desktop (bolinhas de macOS), **sem título**, com uma seta de mouse que desliza até cada alvo e dá um pulso no clique. Página `tools/gif/janela.html`, 1280x800 (ou `--formato 1200x675`). | Anúncio sóbrio, estilo GIF de lançamento de produto; o texto vai na mensagem, não no GIF. Um só jogo visível: um segundo jogador pode entrar numa página escondida (`api.paginaOculta({ pin })`). |
+
+```bash
+node tools/gif/gravar.mjs criar-sala                                  # palco
+node tools/gif/gravar.mjs criar-sala-claude --estilo claude           # janela escura com seta
+```
+
+O roteiro de cada estilo é um arquivo próprio (`criar-sala.mjs` e `criar-sala-claude.mjs`); no estilo `claude` só vale `frames = 1` e título, rótulos e legendas são ignorados.
+
 ## Como funciona
 
 - `tools/gif/palco.html`: o palco (fundo, título, 1 ou 2 celulares com o jogo em `<iframe>`, círculo de toque, legenda).
-- `tools/gif/gravar.mjs <roteiro> [--saida pasta] [--formato 1200x675|1080x1080]`: sobe o servidor estático e, se o roteiro for `online`, o servidor falso (`tools/online/fake-server.mjs`) em portas livres, grava o screencast do Chromium e monta MP4 + GIF com o ffmpeg. **Falha se aparecer qualquer erro no console.**
+- `tools/gif/gravar.mjs <roteiro> [--saida pasta] [--formato 1200x675|1080x1080|1280x800] [--estilo palco|claude]`: sobe o servidor estático e, se o roteiro for `online`, o servidor falso (`tools/online/fake-server.mjs`) em portas livres, grava o screencast do Chromium e monta MP4 + GIF com o ffmpeg. **Falha se aparecer qualquer erro no console.**
 - `tools/gif/roteiros/<nome>.mjs`: o roteiro. Exemplo completo: `criar-sala.mjs` (dois celulares, duelo online).
 
 Precisa de `ffmpeg` e Playwright (o mesmo de `tools/online/e2e.mjs`).
@@ -40,7 +54,7 @@ export async function passos({ frames: [tela], tocar, esperar, legenda }) {
 }
 ```
 
-`api` do `passos`: `frames[i]` (Playwright `frameLocator` de cada celular), `tocar(i, locator)`, `esperar(ms)`, `legenda(texto)`, `titulo(texto, sub)`, `abrir(i, 'pin=123456')` (recarrega o jogo do celular `i` com outra query), `page`, `servidor`.
+`api` do `passos`: `frames[i]` (Playwright `frameLocator` de cada celular), `tocar(i, locator)`, `esperar(ms)`, `legenda(texto)`, `titulo(texto, sub)`, `abrir(i, 'pin=123456')` (recarrega o jogo do celular `i` com outra query), `paginaOculta(query)` (abre outra página do jogo, fora da gravação, no mesmo servidor falso; ex.: o amigo entrando com `{ pin }`), `page`, `servidor`.
 
 Regras do roteiro:
 

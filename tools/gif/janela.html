@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Janela dos GIFs</title>
+<!--
+  Estilo "claude" dos GIFs de divulgação: fundo escuro, o jogo numa janela de desktop (bolinhas de
+  macOS, barra fina), sem título, e uma seta de mouse que desliza até cada alvo.
+  Parâmetros: ?formato=1280x800|1200x675 &servidor=<url> &q=<query extra para o jogo>
+  Usa o mesmo window.palco do palco.html (toque, mover, abrir, legenda, titulo, pronto).
+-->
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; overflow: hidden; background: #141414; font-family: system-ui, "Segoe UI", sans-serif; }
+  #palco { position: relative; overflow: hidden; background: radial-gradient(ellipse at 50% 0%, #1d1d1d, #141414 70%); }
+  #janela {
+    position: absolute; overflow: hidden; background: #1c1c1c; border-radius: 14px;
+    box-shadow: 0 0 0 1px #2c2c2c, 0 24px 60px rgba(0, 0, 0, 0.6);
+  }
+  #barra { position: absolute; left: 0; right: 0; top: 0; background: #1c1c1c; border-bottom: 1px solid #2a2a2a; }
+  .bola { position: absolute; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; }
+  #conteudo { position: absolute; left: 0; overflow: hidden; background: #4aa8ff; }
+  #conteudo iframe { border: 0; display: block; transform-origin: 0 0; background: #4aa8ff; }
+
+  #seta { position: absolute; z-index: 60; left: 0; top: 0; width: 42px; height: 42px; pointer-events: none;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45)); will-change: transform; }
+  .pulso {
+    position: absolute; z-index: 55; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.95); background: rgba(255, 255, 255, 0.25); pointer-events: none;
+    animation: pulso 0.42s ease-out forwards;
+  }
+  @keyframes pulso { from { transform: scale(0.3); opacity: 1; } to { transform: scale(1.3); opacity: 0; } }
+</style>
+</head>
+<body>
+<div id="palco">
+  <div id="janela">
+    <div id="barra"><i class="bola" style="background:#ff5f57"></i><i class="bola" style="background:#febc2e"></i><i class="bola" style="background:#28c840"></i></div>
+    <div id="conteudo"></div>
+  </div>
+  <svg id="seta" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 1.5 L3 19 L7.6 14.7 L10.7 21.8 L13.6 20.5 L10.6 13.6 L17 13.4 Z" fill="#fff" stroke="#000" stroke-width="1.6" stroke-linejoin="round"/></svg>
+</div>
+<script>
+(() => {
+  const q = new URLSearchParams(location.search);
+  const [W, H] = (q.get('formato') ?? '1280x800').split('x').map(Number);
+  const palco = document.getElementById('palco');
+  palco.style.width = `${W}px`;
+  palco.style.height = `${H}px`;
+
+  const margem = Math.round(W * 0.018);
+  const barraH = Math.round(W * 0.028);
+  const jogo = { w: 1280, h: 720 };
+  const s = Math.min((W - 2 * margem) / jogo.w, (H - 2 * margem - barraH) / jogo.h);
+  const cw = Math.round(jogo.w * s);
+  const ch = Math.round(jogo.h * s);
+  const jw = cw;
+  const jh = barraH + ch;
+  const janela = document.getElementById('janela');
+  janela.style.cssText += `;left:${Math.round((W - jw) / 2)}px;top:${Math.round((H - jh) / 2)}px;width:${jw}px;height:${jh}px`;
+  const barra = document.getElementById('barra');
+  barra.style.height = `${barraH}px`;
+  barra.querySelectorAll('.bola').forEach((b, i) => { b.style.left = `${barraH * 0.5 + i * barraH * 0.5}px`; });
+  const conteudo = document.getElementById('conteudo');
+  conteudo.style.cssText += `;top:${barraH}px;width:${cw}px;height:${ch}px`;
+
+  const iframe = document.createElement('iframe');
+  iframe.title = 'Jogo 1';
+  iframe.width = jogo.w;
+  iframe.height = jogo.h;
+  iframe.style.transform = `scale(${s})`;
+  conteudo.appendChild(iframe);
+
+  const extra = new URLSearchParams(q.get('q') ?? '');
+  if (q.get('servidor')) extra.set('servidor', q.get('servidor'));
+  const urlJogo = (query) => {
+    const url = new URL('../../index.html', location.href);
+    const params = query === undefined ? extra : new URLSearchParams(query);
+    params.forEach((v, k) => url.searchParams.set(k, v));
+    if (query !== undefined && q.get('servidor')) url.searchParams.set('servidor', q.get('servidor'));
+    return url.href;
+  };
+  iframe.src = urlJogo();
+
+  // Seta: posição em coordenadas do palco; a ponta é o canto (3,1.5) do desenho de 24x24.
+  const seta = document.getElementById('seta');
+  const ponta = { x: 3 * 42 / 24, y: 1.5 * 42 / 24 };
+  const pos = { x: W - 150, y: H - 110 };
+  const poe = () => { seta.style.transform = `translate(${pos.x - ponta.x}px, ${pos.y - ponta.y}px)`; };
+  poe();
+  const origem = () => {
+    const c = conteudo.getBoundingClientRect();
+    return { x: c.left, y: c.top };
+  };
+  const suave = (t) => (t < 0.5 ? 4 * t ** 3 : 1 - ((-2 * t + 2) ** 3) / 2);
+
+  window.palco = {
+    pronto: false,
+    titulo() {},
+    legenda() {},
+    abrir(i, query) { iframe.src = urlJogo(query); },
+    /** Desliza a seta até o ponto (x, y) do jogo; resolve quando chega. */
+    mover(i, x, y, ms = 550) {
+      const o = origem();
+      const de = { ...pos };
+      const para = { x: o.x + x * s, y: o.y + y * s };
+      const dist = Math.hypot(para.x - de.x, para.y - de.y);
+      const dur = Math.max(360, Math.min(ms, 360 + dist * 0.35));
+      return new Promise((ok) => {
+        const t0 = performance.now();
+        const passo = (agora) => {
+          const t = Math.min(1, (agora - t0) / dur);
+          const e = suave(t);
+          pos.x = de.x + (para.x - de.x) * e;
+          pos.y = de.y + (para.y - de.y) * e;
+          poe();
+          if (t < 1) requestAnimationFrame(passo); else ok();
+        };
+        requestAnimationFrame(passo);
+      });
+    },
+    /** Pulso do clique na ponta da seta. */
+    toque() {
+      const el = document.createElement('div');
+      el.className = 'pulso';
+      el.style.left = `${pos.x}px`;
+      el.style.top = `${pos.y}px`;
+      palco.appendChild(el);
+      setTimeout(() => el.remove(), 600);
+    },
+  };
+  iframe.addEventListener('load', () => { window.palco.pronto = true; document.body.dataset.pronto = '1'; }, { once: true });
+})();
+</script>
+</body>
+</html>

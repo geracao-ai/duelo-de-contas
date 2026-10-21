@@ -1,6 +1,6 @@
 // Grava um GIF (e um MP4) de divulgação de uma funcionalidade, a partir de um roteiro.
 //
-//   node tools/gif/gravar.mjs <roteiro> [--saida gifs] [--formato 1200x675|1080x1080]
+//   node tools/gif/gravar.mjs <roteiro> [--saida gifs] [--formato 1200x675|1080x1080|1280x800] [--estilo palco|claude]
 //
 // O roteiro fica em tools/gif/roteiros/<roteiro>.mjs (veja criar-sala.mjs e a skill /gif-divulgacao).
 // O script sobe sozinho um servidor estático (python3 -m http.server) e, se o roteiro for
@@ -28,7 +28,9 @@ const opcao = (nome, padrao) => {
   return valor;
 };
 const saida = resolve(opcao('saida', 'gifs'));
-const formato = opcao('formato', '1200x675');
+const estilo = opcao('estilo', 'palco'); // 'palco' (colorido, celulares, título) ou 'claude' (janela escura com seta)
+if (!['palco', 'claude'].includes(estilo)) { console.error('--estilo deve ser palco ou claude'); process.exit(1); }
+const formato = opcao('formato', estilo === 'claude' ? '1280x800' : '1200x675');
 const nome = args[0];
 if (!nome || !/^\d+x\d+$/.test(formato)) {
   console.error('Uso: node tools/gif/gravar.mjs <roteiro> [--saida pasta] [--formato 1200x675|1080x1080]');
@@ -61,7 +63,7 @@ async function esperarPorta(url) {
 }
 
 const roteiro = await import(pathToFileURL(join(raiz, 'tools/gif/roteiros', `${nome}.mjs`)));
-const nFrames = roteiro.frames === 2 ? 2 : 1;
+const nFrames = estilo === 'claude' ? 1 : roteiro.frames === 2 ? 2 : 1;
 
 // ---------- servidores ----------
 const filhos = [];
@@ -87,6 +89,7 @@ await esperarPorta(`${site}/index.html`);
 
 // ---------- página ----------
 const consulta = new URLSearchParams({ formato, frames: String(nFrames) });
+const pagina = estilo === 'claude' ? 'janela.html' : 'palco.html';
 if (roteiro.orientacao) consulta.set('orientacao', roteiro.orientacao);
 if (servidor) consulta.set('servidor', servidor);
 if (roteiro.tela) consulta.set('tela', roteiro.tela);
@@ -98,12 +101,15 @@ if (roteiro.subtitulo) consulta.set('sub', roteiro.subtitulo);
 const browser = await chromium.launch({ executablePath: process.env.CHROME });
 const page = await browser.newPage({ viewport: { width: W, height: H } });
 const erros = [];
-page.on('console', (m) => { if (m.type() === 'error') erros.push(`console: ${m.text()}`); });
-page.on('pageerror', (e) => erros.push(`página: ${e.message}`));
-page.on('requestfailed', (r) => erros.push(`rede: ${r.url()} ${r.failure()?.errorText}`));
-page.on('response', (r) => { if (r.status() >= 400) erros.push(`HTTP ${r.status()}: ${r.url()}`); });
+function vigiar(p, quem) {
+  p.on('console', (m) => { if (m.type() === 'error') erros.push(`${quem} console: ${m.text()}`); });
+  p.on('pageerror', (e) => erros.push(`${quem} página: ${e.message}`));
+  p.on('requestfailed', (r) => erros.push(`${quem} rede: ${r.url()} ${r.failure()?.errorText}`));
+  p.on('response', (r) => { if (r.status() >= 400) erros.push(`${quem} HTTP ${r.status()}: ${r.url()}`); });
+}
+vigiar(page, 'palco');
 
-await page.goto(`${site}/tools/gif/palco.html?${consulta}`);
+await page.goto(`${site}/tools/gif/${pagina}?${consulta}`);
 await page.waitForSelector('body[data-pronto="1"]');
 const frames = Array.from({ length: nFrames }, (_, i) => page.frameLocator(`iframe[title="Jogo ${i + 1}"]`));
 await frames[0].locator('#screen-menu:not([hidden])').waitFor();
@@ -123,6 +129,17 @@ const api = {
   page,
   frames,
   servidor,
+  site,
+  /** Abre uma página escondida (fora da gravação), p.ex. o amigo entrando na sala. Mesmo servidor falso. */
+  async paginaOculta(query = {}) {
+    const ctx = await browser.newContext({ viewport: { width: 844, height: 390 } });
+    const p = await ctx.newPage();
+    vigiar(p, 'oculta');
+    const params = new URLSearchParams(query);
+    if (servidor) params.set('servidor', servidor);
+    await p.goto(`${site}/index.html?${params}`);
+    return p;
+  },
   esperar: sleep,
   legenda: (texto) => page.evaluate((t) => window.palco.legenda(t), texto),
   titulo: (texto, sub) => page.evaluate(([t, s]) => window.palco.titulo(t, s), [texto, sub]),
@@ -134,8 +151,14 @@ const api = {
       const b = el.getBoundingClientRect();
       return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
     });
-    await page.evaluate(([a, x, y]) => window.palco.toque(a, x, y), [i, r.x, r.y]);
-    await sleep(110);
+    if (estilo === 'claude') {
+      await page.evaluate(([a, x, y]) => window.palco.mover(a, x, y), [i, r.x, r.y]); // a seta desliza até o alvo
+      await page.evaluate(() => window.palco.toque());
+      await sleep(90);
+    } else {
+      await page.evaluate(([a, x, y]) => window.palco.toque(a, x, y), [i, r.x, r.y]);
+      await sleep(110);
+    }
     await locator.click({ timeout: 10000 });
   },
 };
