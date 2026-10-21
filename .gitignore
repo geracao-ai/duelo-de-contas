@@ -4,3 +4,4 @@ worker/.wrangler/
 .DS_Store
 dist/
 shots-online/
+gifs/

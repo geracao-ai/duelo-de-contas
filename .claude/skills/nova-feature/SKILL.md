@@ -103,3 +103,4 @@ Pelo conector **PostHog** (ver `.github/posthog.mcp.md`):
 
 - Atualize a documentação que mudou (`README.md`, `.github/*.mcp.md`).
 - Mande ao dono do projeto: o link do PR, os prints principais e um **roteiro para testar em aparelhos reais** (o que fazer, o que deve acontecer).
+- Se a funcionalidade for destaque, gere, se quiser, um GIF de divulgação com `/gif-divulgacao` para acompanhar o anúncio.
