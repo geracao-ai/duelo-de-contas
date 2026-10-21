@@ -19,6 +19,7 @@ Cabo de guerra da matemática para crianças de **6 a 10 anos**. Site: https://d
 | Partida online com 2 navegadores | `node tools/online/e2e.mjs facil 844x390 shots-online http://localhost:8787` |
 | Hora de dormir acelerada (só localhost) | `?sono=rapido` |
 | Publicar esboços/prints no GitHub | `tools/telas/publicar.sh <pasta> <imagens>` |
+| GIF de divulgação de uma funcionalidade | `node tools/gif/gravar.mjs <roteiro>` (skill `/gif-divulgacao`) |
 
 ## Regras que valem sempre
 
