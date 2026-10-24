@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Palco dos GIFs</title>
+<!--
+  Palco para os GIFs de divulgação (ver tools/gif/gravar.mjs e a skill /gif-divulgacao).
+  Parâmetros: ?formato=1200x675|1080x1080 &frames=1|2 &orientacao=deitado|em-pe
+              &tela=844x390 &servidor=<url> &q=<query extra para o jogo> &rotulos=Lia,Theo
+  Ajudantes em window.palco: titulo(texto, sub), toque(i, x, y), legenda(texto), abrir(i, query), pronto.
+-->
+<style>
+  :root {
+    --ink: #2b1f3a;
+    --ink-soft: #5b4a73;
+    --blue: #1a5fd0;
+    --yellow: #ffc83d;
+    --red: #d62839;
+    --green: #148040;
+    --font: "Trebuchet MS", "Segoe UI", "Comic Sans MS", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; overflow: hidden; background: #dff0ff; font-family: var(--font); color: var(--ink); }
+  #palco {
+    position: relative; overflow: hidden;
+    background:
+      radial-gradient(ellipse at 12% 8%, rgba(255, 200, 61, 0.55), transparent 55%),
+      radial-gradient(ellipse at 90% 95%, rgba(214, 40, 57, 0.22), transparent 55%),
+      linear-gradient(135deg, #cfe9ff 0%, #e9f3ff 48%, #fff0cf 100%);
+  }
+  #cab { position: absolute; left: 0; right: 0; text-align: center; padding: 0 5%; }
+  #titulo { margin: 0; font-weight: 900; line-height: 1.08; letter-spacing: -0.5px; color: var(--ink); }
+  #sub { margin: 0.25em 0 0; font-weight: 700; color: var(--ink-soft); line-height: 1.2; }
+
+  .aparelho {
+    position: absolute; background: #2b1f3a; transform-origin: 0 0;
+    box-shadow: 0 18px 40px rgba(43, 31, 58, 0.30), 0 0 0 2px rgba(255, 255, 255, 0.5) inset;
+  }
+  .aparelho .tela { position: absolute; overflow: hidden; background: #4aa8ff; }
+  .aparelho iframe { border: 0; display: block; background: #4aa8ff; }
+  .rotulo {
+    position: absolute; transform: translateX(-50%); padding: 0.15em 0.9em; border-radius: 99px;
+    background: #fff; font-weight: 800; color: var(--ink); box-shadow: 0 4px 12px rgba(43, 31, 58, 0.18);
+    white-space: nowrap;
+  }
+
+  #legenda {
+    position: absolute; left: 50%; transform: translate(-50%, 8px); opacity: 0; white-space: nowrap;
+    padding: 0.35em 1.1em; border-radius: 99px; background: var(--ink); color: #fff; font-weight: 800;
+    transition: opacity 0.35s ease, transform 0.35s ease;
+  }
+  #legenda.on { opacity: 1; transform: translate(-50%, 0); }
+
+  .toque {
+    position: absolute; z-index: 50; border-radius: 50%; pointer-events: none;
+    background: rgba(255, 255, 255, 0.6); border: 3px solid #fff;
+    box-shadow: 0 0 0 2px rgba(43, 31, 58, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3);
+    animation: toque 0.55s ease-out forwards;
+  }
+  @keyframes toque { from { transform: scale(0.55); opacity: 1; } to { transform: scale(1.5); opacity: 0; } }
+</style>
+</head>
+<body>
+<div id="palco">
+  <div id="cab"><h1 id="titulo"></h1><p id="sub"></p></div>
+  <div id="legenda" role="status"></div>
+</div>
+<script>
+(() => {
+  const q = new URLSearchParams(location.search);
+  const [W, H] = (q.get('formato') ?? '1200x675').split('x').map(Number);
+  const n = q.get('frames') === '2' ? 2 : 1;
+  const emPe = q.get('orientacao') === 'em-pe';
+  const rotulos = (q.get('rotulos') ?? '').split(',').filter(Boolean);
+  const u = W / 1200; // unidade: tudo se mede em relação ao quadro de 1200 de largura
+  const quadrado = W === H;
+
+  const palco = document.getElementById('palco');
+  palco.style.width = `${W}px`;
+  palco.style.height = `${H}px`;
+  const cab = document.getElementById('cab');
+  const titulo = document.getElementById('titulo');
+  const sub = document.getElementById('sub');
+  const legenda = document.getElementById('legenda');
+  cab.style.top = `${30 * u}px`;
+  titulo.style.fontSize = `${54 * u}px`;
+  sub.style.fontSize = `${26 * u}px`;
+  legenda.style.fontSize = `${24 * u}px`;
+  legenda.style.bottom = `${14 * u}px`;
+
+  // Espaço para os aparelhos: abaixo do título (e da legenda, no rodapé).
+  const topo = (quadrado ? 170 : 150) * u;
+  const base = 56 * u;
+  const lateral = 30 * u;
+  const caixa = { x: lateral, y: topo, w: W - 2 * lateral, h: H - topo - base };
+
+  const [tw = 844, th = 390] = (q.get('tela') ?? '').split('x').map(Number);
+  const tela = emPe ? { w: th, h: tw } : { w: tw, h: th }; // tamanho do celular (deitado: largura x altura)
+  const borda = 12;
+  const aparelhoW = tela.w + 2 * borda;
+  const aparelhoH = tela.h + 2 * borda;
+  const vertical = n === 2 && quadrado && !emPe; // dois deitados num quadro quadrado: um embaixo do outro
+  const espaco = 28 * u;
+  const colunas = vertical ? 1 : n;
+  const linhas = vertical ? n : 1;
+  const rotuloH = rotulos.length ? 34 * u : 0;
+  const s = Math.min(
+    (caixa.w - espaco * (colunas - 1)) / (colunas * aparelhoW),
+    (caixa.h - espaco * (linhas - 1) - rotuloH * linhas) / (linhas * aparelhoH),
+  );
+  const totalW = colunas * aparelhoW * s + espaco * (colunas - 1);
+  const totalH = linhas * (aparelhoH * s + rotuloH) + espaco * (linhas - 1);
+  const x0 = caixa.x + (caixa.w - totalW) / 2;
+  const y0 = caixa.y + (caixa.h - totalH) / 2;
+
+  const aparelhos = [];
+  const baseUrl = new URL('../../index.html', location.href);
+  const extra = new URLSearchParams(q.get('q') ?? '');
+  if (q.get('servidor')) extra.set('servidor', q.get('servidor'));
+  const urlJogo = (query) => {
+    const url = new URL(baseUrl);
+    const params = query === undefined ? extra : new URLSearchParams(query);
+    params.forEach((v, k) => url.searchParams.set(k, v));
+    if (query !== undefined && q.get('servidor')) url.searchParams.set('servidor', q.get('servidor'));
+    return url.href;
+  };
+
+  for (let i = 0; i < n; i++) {
+    const col = vertical ? 0 : i;
+    const lin = vertical ? i : 0;
+    const x = x0 + col * (aparelhoW * s + espaco);
+    const y = y0 + lin * (aparelhoH * s + rotuloH + espaco);
+    const ap = document.createElement('div');
+    ap.className = 'aparelho';
+    ap.style.cssText = `left:${x}px;top:${y}px;width:${aparelhoW}px;height:${aparelhoH}px;border-radius:34px;transform:scale(${s})`;
+    const t = document.createElement('div');
+    t.className = 'tela';
+    t.style.cssText = `left:${borda}px;top:${borda}px;width:${tela.w}px;height:${tela.h}px;border-radius:24px`;
+    const f = document.createElement('iframe');
+    f.title = `Jogo ${i + 1}`;
+    f.width = tela.w;
+    f.height = tela.h;
+    f.src = urlJogo();
+    t.appendChild(f);
+    ap.appendChild(t);
+    palco.appendChild(ap);
+    if (rotulos[i]) {
+      const r = document.createElement('div');
+      r.className = 'rotulo';
+      r.textContent = rotulos[i];
+      r.style.cssText = `left:${x + (aparelhoW * s) / 2}px;top:${y + aparelhoH * s + 6 * u}px;font-size:${20 * u}px`;
+      palco.appendChild(r);
+    }
+    aparelhos.push({ x: x + borda * s, y: y + borda * s, s, iframe: f });
+  }
+
+  window.palco = {
+    pronto: false,
+    titulo(texto, subtitulo = '') {
+      titulo.textContent = texto;
+      sub.textContent = subtitulo;
+      sub.style.display = subtitulo ? '' : 'none';
+    },
+    /** Círculo de toque nas coordenadas do jogo (dentro do iframe). */
+    toque(i, x, y) {
+      const ap = aparelhos[i];
+      const d = 60 * u;
+      const el = document.createElement('div');
+      el.className = 'toque';
+      el.style.cssText = `width:${d}px;height:${d}px;left:${ap.x + x * ap.s - d / 2}px;top:${ap.y + y * ap.s - d / 2}px`;
+      palco.appendChild(el);
+      setTimeout(() => el.remove(), 700);
+    },
+    /** Legenda pequena no rodapé; sem texto, esconde. */
+    legenda(texto) {
+      if (!texto) { legenda.classList.remove('on'); return; }
+      legenda.textContent = texto;
+      legenda.classList.add('on');
+    },
+    /** Recarrega o jogo de um aparelho com outra query (ex.: "pin=123456"). */
+    abrir(i, query) { aparelhos[i].iframe.src = urlJogo(query); },
+  };
+
+  const carregados = aparelhos.map(({ iframe }) => new Promise((ok) => iframe.addEventListener('load', ok, { once: true })));
+  window.palco.titulo(q.get('titulo') ?? '', q.get('sub') ?? '');
+  Promise.all(carregados).then(() => { window.palco.pronto = true; document.body.dataset.pronto = '1'; });
+})();
+</script>
+</body>
+</html>
