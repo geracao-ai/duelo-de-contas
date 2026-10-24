@@ -103,6 +103,23 @@ posthog.init('phc_qFezYEtjW2X7Xbc34GHFf34NWEDpVojsQzRCJ2RRY4Qd', {
 });
 ```
 
+Logo depois do `init` (antes do primeiro `$pageview`), o jogo registra propriedades fixas em todo evento:
+
+```js
+posthog.register({ app: 'duelo-de-contas', $lib: 'duelo-de-contas-web' });
+```
+
+Assim **todo evento** leva:
+
+| Propriedade | Valor | Quem envia |
+| --- | --- | --- |
+| `app` | `"duelo-de-contas"` | o jogo (`register`) |
+| `$lib` | `"duelo-de-contas-web"` (no lugar de `"web"`; a versão do SDK continua em `$lib_version`) | o jogo (`register`) |
+| `distinct_id` | aleatório, criado a cada abertura da página e mantido só na memória (`persistence: 'memory'`) — não identifica ninguém nem liga uma visita à outra | o SDK |
+| `$pathname` | a página (`/`, `/termos.html`) | o SDK |
+
+Para filtrar só o jogo em insights: `app = duelo-de-contas`. Conferido com o SDK real (posthog-js 1.438) em 2026-10-24.
+
 Se o aparelho tiver escolhido **"Não enviar estatísticas"**, o PostHog nem é carregado.
 
 ## 3. Eventos

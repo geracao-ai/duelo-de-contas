@@ -28,6 +28,12 @@ const POSTHOG_CONFIG = {
   capture_dead_clicks: false,
 };
 
+/**
+ * Propriedades fixas de todo evento (super properties do PostHog). `distinct_id` e `$pathname`
+ * o próprio SDK já envia; `distinct_id` é aleatório e só vive na memória da página (não identifica ninguém).
+ */
+export const SUPER_PROPS = Object.freeze({ app: 'duelo-de-contas', $lib: 'duelo-de-contas-web' });
+
 // Métodos que a fila temporária aceita enquanto o array.js ainda não chegou.
 const STUB_METHODS = [
   'capture', 'register', 'register_once', 'unregister', 'reset', 'opt_out_capturing',
@@ -202,6 +208,7 @@ export function initAnalytics() {
     if (!enabled) return;
     installStub(globalThis);
     globalThis.posthog.init(POSTHOG_TOKEN, { ...POSTHOG_CONFIG });
+    globalThis.posthog.register({ ...SUPER_PROPS }); // antes do array.js: vale já para o 1º $pageview
     loadScript(globalThis.document);
     active = true;
     sendVisits();
