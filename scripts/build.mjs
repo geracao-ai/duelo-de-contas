@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 const RAIZ = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const ARQUIVOS = ['index.html', 'termos.html']; // termos.html é opcional
 const PASTAS = ['css', 'js', 'assets'];
+// Arquivos que precisam ficar na raiz do site (o iPhone procura /apple-touch-icon.png sozinho).
+const NA_RAIZ = { 'assets/apple-touch-icon.png': 'apple-touch-icon.png' };
 
 // Recria a pasta de saída e copia o que o site precisa. Devolve a pasta usada.
 export function build(saida = join(RAIZ, 'dist'), raiz = RAIZ) {
@@ -17,6 +19,9 @@ export function build(saida = join(RAIZ, 'dist'), raiz = RAIZ) {
   }
   for (const pasta of PASTAS) {
     cpSync(join(raiz, pasta), join(saida, pasta), { recursive: true });
+  }
+  for (const [origem, destino] of Object.entries(NA_RAIZ)) {
+    if (existsSync(join(raiz, origem))) cpSync(join(raiz, origem), join(saida, destino));
   }
   return saida;
 }

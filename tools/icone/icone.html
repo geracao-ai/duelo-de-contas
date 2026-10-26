@@ -1,0 +1,23 @@
+<!doctype html>
+<!-- Ícone do site para a tela inicial do iPhone (apple-touch-icon): o Ursinho no céu do jogo. -->
+<html lang="pt-BR">
+<head><meta charset="utf-8"><style>html, body { margin: 0; background: #4aa8ff; } canvas { display: block; }</style></head>
+<body>
+<canvas id="c" width="180" height="180"></canvas>
+<script type="module">
+  import { drawCharacter } from '../../js/characters.js';
+  const ctx = document.getElementById('c').getContext('2d');
+  // céu e grama nas cores do cenário (js/render.js)
+  const ceu = ctx.createLinearGradient(0, 0, 0, 180);
+  ceu.addColorStop(0, '#4aa8ff');
+  ceu.addColorStop(1, '#bfe9ff');
+  ctx.fillStyle = ceu;
+  ctx.fillRect(0, 0, 180, 180);
+  ctx.fillStyle = '#5cbf4a';
+  ctx.fillRect(0, 150, 180, 30);
+  // sem margem transparente: o iOS arredonda os cantos sozinho
+  drawCharacter(ctx, 'urso', 84, 188, 54, { state: 'idle', t: 0 });
+  document.body.dataset.ready = '1';
+</script>
+</body>
+</html>
