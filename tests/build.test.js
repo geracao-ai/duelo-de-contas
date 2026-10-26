@@ -10,7 +10,7 @@ test('build copia o jogo e deixa de fora testes, ferramentas e funções', () =>
   const saida = join(pasta, 'dist');
   try {
     build(saida);
-    for (const f of ['index.html', 'css/style.css', 'js/game.js', 'assets/og-image.png']) {
+    for (const f of ['index.html', 'css/style.css', 'js/game.js', 'assets/og-image.png', 'apple-touch-icon.png']) {
       assert.ok(existsSync(join(saida, f)), `deveria existir: ${f}`);
     }
     for (const f of ['tests', 'tools', '.github', 'node_modules', 'functions', 'redirect', 'package.json']) {
