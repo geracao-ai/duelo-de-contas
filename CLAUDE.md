@@ -18,6 +18,7 @@ Cabo de guerra da matemática para crianças de **6 a 10 anos**. Site: https://d
 | Teste do servidor | `node tools/online/smoke.mjs http://localhost:8787` |
 | Partida online com 2 navegadores | `node tools/online/e2e.mjs facil 844x390 shots-online http://localhost:8787` |
 | Hora de dormir acelerada (só localhost) | `?sono=rapido` |
+| Conferir as telas (tamanhos + iPhone com câmera), com prints | `node tools/telas/conferir.mjs shots` (jogo local na porta 8000) |
 | Publicar esboços/prints no GitHub | `tools/telas/publicar.sh <pasta> <imagens>` |
 | GIF de divulgação de uma funcionalidade | `node tools/gif/gravar.mjs <roteiro>` (skill `/gif-divulgacao`) |
 
@@ -25,7 +26,7 @@ Cabo de guerra da matemática para crianças de **6 a 10 anos**. Site: https://d
 
 - **Público infantil:** textos em português do Brasil, curtos e carinhosos; sem nomes digitados, sem chat.
 - **Acessibilidade:** alvos de toque ≥ 48px, leitor de tela (`aria-*`, região `#live`), "reduzir movimento" respeitado, contraste AA.
-- **Telas:** tem que caber, sem rolagem, em **844x390** (celular deitado), **390x844** (em pé) e **1280x720**.
+- **Telas:** tem que caber, sem rolagem, em **844x390** (celular deitado), **390x844** (em pé) e **1280x720**, e nada pode ficar embaixo da câmera ou da barra de início do iPhone (use `var(--sa-l/r/t/b)` do `css/style.css`).
 - **Sem segredos:** nada de token no repositório nem nos segredos do GitHub. Só chaves públicas (`phc_…`). A infra é mexida pelos conectores MCP (Cloudflare API `https://mcp.cloudflare.com/mcp` e PostHog), com login OAuth.
 - **Privacidade:** medimos o jogo, não a criança. Sem `identify`, sem perfis; região só país e estado. Mudou o que é coletado → atualizar `termos.html` e `.github/posthog.mcp.md`.
 - **Git:** trabalhar em branch e PR; nunca commit direto na `main`, nunca force push. Merge squash com os checks verdes.

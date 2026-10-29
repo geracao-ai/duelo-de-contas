@@ -52,7 +52,7 @@ Use o modelo `.github/ISSUE_TEMPLATE/funcionalidade.md`:
 ## 6. Testar e conferir com o esboço
 
 - `npm test` e `npm run build` limpos; se mexeu no servidor, `tools/online/smoke.mjs` e `tools/online/e2e.mjs` contra `wrangler dev`.
-- **Prints** com Playwright das mesmas telas e nos mesmos três tamanhos do esboço. Sem erros no console. Confira também que os modos que já existiam não mudaram.
+- **Prints** com Playwright das mesmas telas e nos mesmos três tamanhos do esboço. Sem erros no console. Confira também que os modos que já existiam não mudaram. Rode `node tools/telas/conferir.mjs shots`: ele confere o menu e as partidas também no iPhone (câmera e barra de início simuladas) e falha se algo sair da área visível ou a tela rolar.
 - **Compare print × esboço**, tela por tela: posição dos elementos, tamanhos, cores, textos, o que cabe sem rolagem. Diferença sem motivo → corrija. Diferença com motivo → anote para o PR.
 
 ## 7. Pull request
