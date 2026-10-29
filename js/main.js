@@ -159,7 +159,7 @@ function computeSceneRect() {
 
 function layout() {
   $('#screen-match').classList.toggle('side', matchSideLayout());
-  if (app.screen === 'help-topic') desenharAjuda($('#help-canvas'), app.ajuda.tema);
+  if (app.screen === 'help-topic') pedirDesenhoDaAjuda();
   renderer.setSceneRect(computeSceneRect());
   if (app.screen === 'sleep') app.sleepCard = $('.sleep-card').getBoundingClientRect();
 }
@@ -847,6 +847,7 @@ function onKeyDown(event) {
   if (event.ctrlKey || event.metaKey || event.altKey) return;
   if (app.screen === 'join') { onJoinKey(event); return; }
   if (app.screen === 'help-topic' && event.key === 'Escape') { closeHelpTopic(); return; }
+  if (app.screen === 'help' && event.key === 'Escape') { onAction('help-back'); return; }
   if (app.screen !== 'match' || !app.match) return;
   if (event.key === 'Escape') {
     event.preventDefault();
@@ -1572,21 +1573,36 @@ function renderHelp() {
     const botao = make('button', `btn ${tema.cor}`, tema.titulo);
     botao.type = 'button';
     botao.dataset.tema = tema.id;
-    if (tema.destaque) botao.append(make('small', '', 'o seu celular'));
+    if (tema.destaque) botao.append(make('small', '', 'este aparelho'));
     botao.addEventListener('click', () => openHelpTopic(tema.id, 'menu'));
     return botao;
   }));
 }
 
+/** Desenha a ilustração no próximo quadro, uma vez só por tamanho e tema (giro, resize e ResizeObserver chegam juntos). */
+function pedirDesenhoDaAjuda() {
+  if (app.ajuda.quadro) return;
+  app.ajuda.quadro = requestAnimationFrame(() => {
+    app.ajuda.quadro = 0;
+    const canvas = $('#help-canvas');
+    const { width, height } = canvas.getBoundingClientRect();
+    const chave = `${app.ajuda.tema}:${Math.round(width)}x${Math.round(height)}`;
+    if (app.screen !== 'help-topic' || chave === app.ajuda.desenhado) return;
+    app.ajuda.desenhado = chave;
+    desenharAjuda(canvas, app.ajuda.tema).catch(() => { app.ajuda.desenhado = ''; }); // a lista em texto continua lá
+  });
+}
+
 /** Abre um tema da Ajuda. `origem`: 'menu' (pela página de Ajuda) ou 'desafiar' (tela "Desafiar um amigo"). */
 function openHelpTopic(tema, origem) {
   if (!temaValido(tema)) return;
-  app.ajuda = { tema, voltarPara: origem === 'desafiar' ? 'online' : 'help' };
+  app.ajuda = { tema, voltarPara: origem === 'desafiar' ? 'online' : 'help', quadro: 0, desenhado: '' };
   setText($('#help-topic-title'), TITULO_DO_TEMA[tema]);
   $('#help-steps').replaceChildren(...PASSOS[tema].map((passo) => make('li', '', passo)));
   track('ajuda_aberta', ajudaProps(tema, origem));
   showScreen('help-topic'); // layout() desenha a ilustração no tamanho da tela
   $('#btn-help-topic-back').focus();
+  announce(`${TITULO_DO_TEMA[tema]}. ${PASSOS[tema].join(' ')}`);
 }
 
 function closeHelpTopic() {
@@ -1654,6 +1670,8 @@ function init() {
   }
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('pagehide', () => trackAbandon(true));
+  // Sem a barrinha "Instalar app" do Chrome no meio da partida: instalar fica no menu ⋮ (ver a Ajuda).
+  window.addEventListener('beforeinstallprompt', (event) => event.preventDefault());
   window.addEventListener('resize', () => { renderer.resize(); updateRotateHint(); layout(); });
   window.addEventListener('orientationchange', () => { renderer.resize(); updateRotateHint(); layout(); });
   if (typeof ResizeObserver !== 'undefined') {

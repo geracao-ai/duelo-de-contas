@@ -130,19 +130,20 @@ function cenaAmigo(ctx, W, H, emPe) {
   } else {
     texto(ctx, 'celular da Lia', A.x + A.w / 2, 412, BLUE, 21);
     texto(ctx, 'celular do Theo', B.x + B.w / 2, 852, RED, 21);
-    curva(ctx, [A.x + A.w / 2 + 30, 428], [420, 470], [B.x + B.w / 2 - 30, B.y - 14], { cor: ORANGE, larg: 4, tremor: 0.6 });
-    retangulo(ctx, 300, 436, 104, 36, 8, { cor: ORANGE, larg: 2, fundo: '#fff3e6' });
-    texto(ctx, '482913', 352, 455, INK, 24);
-    texto(ctx, ['passe o PIN', 'para o amigo'], 140, 480, ORANGE, 26);
-    texto(ctx, '(falando ou pelo convite)', 150, 540, BLUE, 19);
+    // a corda desce pela esquerda, longe da nota 3
+    curva(ctx, [A.x + A.w / 2 + 30, 428], [230, 560], [B.x + B.w / 2 - 30, B.y - 14], { cor: ORANGE, larg: 4, tremor: 0.6 });
+    retangulo(ctx, 190, 462, 104, 36, 8, { cor: ORANGE, larg: 2, fundo: '#fff3e6' });
+    texto(ctx, '482913', 242, 481, INK, 24);
+    texto(ctx, ['passe o PIN', 'para o amigo'], 90, 530, ORANGE, 26);
+    texto(ctx, '(falando ou pelo convite)', 120, 590, BLUE, 19);
     texto(ctx, ['1. toque em', 'Criar sala'], A.x + A.w / 2, 52, RED, 24);
     seta(ctx, [A.x + A.w / 2, 82], [A.x + A.w / 2, A.y + 32], RED, 0.05);
     texto(ctx, ['2. aparece', 'o PIN'], 400, 150, RED, 24);
     seta(ctx, [380, 180], [A.x + A.w - 8, A.y + 104], RED, 0.2);
     texto(ctx, ['3. o amigo toca em', 'Entrar com PIN'], 380, 512, RED, 24);
     seta(ctx, [400, 540], [B.x + B.w / 2 + 30, B.y + 32], RED, -0.1);
-    texto(ctx, ['4. digita o PIN', 'que recebeu'], 120, 630, RED, 24);
-    seta(ctx, [140, 660], [B.x - 4, B.y + 100], RED, 0.25);
+    texto(ctx, ['4. digita o PIN', 'que recebeu'], 110, 690, RED, 24);
+    seta(ctx, [190, 680], [B.x - 4, B.y + 112], RED, -0.2);
     texto(ctx, ['5. cada um escolhe um bichinho', 'e a Lia toca em Começar!'], 260, 920, BLUE, 22);
   }
   bichinho(ctx, 'raposa', L.raposa[0], L.raposa[1], L.s, { facing: L.raposa[2], aponta: emPe ? [A.x + A.w + 4, A.y + 128] : [A.x - 6, A.y + 126] });
@@ -203,7 +204,8 @@ function cenaSalvar(ctx, W, H, emPe, sistema) {
   const iAlvo = itens.findIndex((it) => /Adicionar à/.test(it));
   const nAlvo = ios ? 1 : 2;
   retangulo(ctx, t2.x - 4, y0 + iAlvo * 34 - 4, t2.w + 8, nAlvo * 34 + 4, 10, { cor: RED, larg: 2.4 });
-  alvos.push([t2.x + t2.w + 4, y0 + iAlvo * 34 + 14]);
+  // em pé a nota 2 fica à esquerda: a seta chega pela borda esquerda, sem cruzar o celular
+  alvos.push([emPe ? t2.x - 4 : t2.x + t2.w + 4, y0 + iAlvo * 34 + 14]);
 
   // tela 3: confirmar e o ícone pronto
   const t3 = telas[2];
