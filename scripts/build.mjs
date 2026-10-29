@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const RAIZ = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const ARQUIVOS = ['index.html', 'termos.html']; // termos.html é opcional
+const ARQUIVOS = ['index.html', 'termos.html', 'manifest.webmanifest']; // termos.html é opcional
 const PASTAS = ['css', 'js', 'assets'];
 // Arquivos que precisam ficar na raiz do site (o iPhone procura /apple-touch-icon.png sozinho).
 const NA_RAIZ = { 'assets/apple-touch-icon.png': 'apple-touch-icon.png' };

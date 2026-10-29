@@ -23,6 +23,12 @@
   --sa-l: env(safe-area-inset-left, 0px);
 }
 
+/* letra de mão das anotações da Ajuda (assets/fontes/OFL.txt) */
+@font-face {
+  font-family: "Patrick Hand"; font-display: swap;
+  src: url("../assets/fontes/patrick-hand.woff2") format("woff2");
+}
+
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 
@@ -98,6 +104,11 @@ html, body {
 .btn-mute {
   position: fixed; top: calc(10px + var(--sa-t)); right: calc(10px + var(--sa-r)); z-index: 10;
   --c: var(--gray); font-size: 0.95rem; padding: 8px 12px;
+}
+/* Ajuda: no canto de cima à esquerda do menu, espelhando o Som */
+.btn-help {
+  position: fixed; top: calc(10px + var(--sa-t)); left: calc(10px + var(--sa-l)); z-index: 10;
+  font-size: 0.95rem; padding: 8px 12px;
 }
 .btn[aria-pressed="true"].btn-mute, .btn[aria-pressed="true"]#btn-mute-hud { --c: var(--red); --cd: var(--red-dark); }
 
@@ -388,6 +399,21 @@ html:has(body.legal) { overflow: auto; height: auto; }
 /* ---------- duelo online ---------- */
 .online-card { width: min(440px, 100%); }
 .online-card .btn { width: 100%; }
+.online-row { flex-wrap: nowrap; }
+.online-row .btn { flex: 1 1 0; width: auto; }
+
+/* ---------- ajuda ---------- */
+.help-card { width: min(460px, 100%); display: flex; flex-direction: column; gap: 12px; }
+.help-list { display: flex; flex-direction: column; gap: 12px; }
+.help-list .btn { min-height: 64px; font-size: 1.25rem; }
+.help-list .btn small { display: block; font-size: 0.7em; font-weight: 800; opacity: 0.92; }
+.help-topic-card {
+  width: min(1100px, 100%); height: 100%; display: flex; flex-direction: column; gap: 8px;
+  background: #fff; padding: 10px 14px;
+}
+.help-topic-top { display: flex; align-items: center; gap: 12px; }
+.help-topic-top h2 { flex: 1; text-align: left; font-size: clamp(1.2rem, 3.4vw, 1.8rem); }
+#help-canvas { flex: 1; min-height: 0; width: 100%; display: block; }
 .lobby-card, .join-card { width: min(560px, 100%); text-align: center; }
 .join-stage { display: flex; flex-direction: column; gap: 12px; }
 .pin-digits { display: flex; justify-content: center; gap: clamp(4px, 1.6vw, 10px); }
@@ -439,6 +465,16 @@ html:has(body.legal) { overflow: auto; height: auto; }
   .pin-digit { height: 52px; }
   .lobby-slot canvas { width: 96px; height: 96px; }
 }
+@media (max-height: 520px) {
+  .help-card { gap: 8px; }
+  .help-list { gap: 8px; }
+  .help-list .btn { min-height: 52px; font-size: 1.1rem; }
+}
+/* em pé: o título desce para não ficar embaixo dos botões Ajuda e Som */
+@media (max-aspect-ratio: 1/1) {
+  #screen-menu { padding-top: max(76px, 7vh); }
+}
+
 /* Safari deitado (barra de endereço visível): ~330 px de altura */
 @media (max-height: 360px) and (min-width: 600px) {
   #screen-menu { gap: 4px; }

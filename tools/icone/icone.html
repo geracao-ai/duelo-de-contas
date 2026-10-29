@@ -1,12 +1,17 @@
 <!doctype html>
-<!-- Ícone do site para a tela inicial do iPhone (apple-touch-icon): o Ursinho no céu do jogo. -->
+<!-- Ícone do site (apple-touch-icon e manifesto): o Ursinho no céu do jogo. -->
 <html lang="pt-BR">
 <head><meta charset="utf-8"><style>html, body { margin: 0; background: #4aa8ff; } canvas { display: block; }</style></head>
 <body>
 <canvas id="c" width="180" height="180"></canvas>
 <script type="module">
   import { drawCharacter } from '../../js/characters.js';
-  const ctx = document.getElementById('c').getContext('2d');
+  // ?tamanho=192 ou 512 para os ícones do manifesto; o desenho é o mesmo, só escalado
+  const tamanho = Number(new URLSearchParams(location.search).get('tamanho')) || 180;
+  const canvas = document.getElementById('c');
+  canvas.width = canvas.height = tamanho;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(tamanho / 180, tamanho / 180);
   // céu e grama nas cores do cenário (js/render.js)
   const ceu = ctx.createLinearGradient(0, 0, 0, 180);
   ceu.addColorStop(0, '#4aa8ff');

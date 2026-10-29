@@ -140,6 +140,7 @@ Se o aparelho tiver escolhido **"Não enviar estatísticas"**, o PostHog nem é 
 | `sala_erro` | erro ao criar/entrar/jogar online | `codigo` (`sala-inexistente`, `sala-cheia`, `versao`, `mensagem-invalida`, `conexao`) |
 | `anoiteceu` | o jogo chega aos 10 min de uso e o céu escurece (uma vez por dia de jogo) | — |
 | `hora_de_dormir` | a tela "Os bichinhos foram dormir" aparece (aos 15 min, depois de a partida acabar) | — |
+| `ajuda_aberta` | um tema da Ajuda é aberto | `tema` (`amigo`/`iphone`/`android`), `origem` (`menu` = pela página de Ajuda, `desafiar` = botão Ajuda da tela "Desafiar um amigo") |
 | `estatisticas_zeradas` | botão zerar | — |
 
 Nenhuma propriedade contém texto livre ou dado da criança.
