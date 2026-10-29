@@ -31,7 +31,7 @@ export const PASSOS = {
   ],
   android: [
     'No Chrome, toque nos três pontinhos, no canto de cima.',
-    'Toque em Adicionar à tela inicial ou em Instalar app.',
+    'Toque em Instalar e criar atalho.',
     'Toque em Instalar.',
     'Pronto! O jogo fica na tela inicial, como um app.',
   ],

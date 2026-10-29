@@ -36,7 +36,7 @@ test('cada tema tem título e passos curtos para o leitor de tela', () => {
   }
   assert.match(PASSOS.amigo.join(' '), /recebeu/); // o PIN vem do amigo
   assert.match(PASSOS.iphone.join(' '), /Adicionar à Tela de Início/);
-  assert.match(PASSOS.android.join(' '), /Adicionar à tela inicial.*Instalar app/);
+  assert.match(PASSOS.android.join(' '), /Instalar e criar atalho/); // nome no Chrome do Android (2026)
 });
 
 test('ajudaProps só envia valores conhecidos', () => {

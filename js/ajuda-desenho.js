@@ -161,7 +161,7 @@ function cenaSalvar(ctx, W, H, emPe, sistema) {
     ]
     : [
       { nota: ['1. toque nos', 'três pontinhos ⋮'] },
-      { nota: ['2. toque em', 'Adicionar à tela inicial', 'ou Instalar app'] },
+      { nota: ['2. toque em', 'Instalar e', 'criar atalho'] },
       { nota: ['3. toque em', 'Instalar'] },
     ];
   const largura = emPe ? 150 : 160;
@@ -193,17 +193,16 @@ function cenaSalvar(ctx, W, H, emPe, sistema) {
 
   // tela 2: menu com a opção
   const t2 = telas[1];
-  const itens = ios ? ['Copiar', 'Favoritos', 'Adicionar à Tela de Início'] : ['Nova guia', 'Histórico', 'Adicionar à tela inicial', 'Instalar app'];
+  const itens = ios ? ['Copiar', 'Favoritos', 'Adicionar à Tela de Início'] : ['Nova guia', 'Histórico', 'Downloads', 'Instalar e criar atalho'];
   const y0 = ios ? t2.y + t2.h - itens.length * 34 - 4 : t2.y + 6;
   itens.forEach((it, i) => {
     const y = y0 + i * 34;
-    const chave = /Adicionar à|Instalar/.test(it);
+    const chave = /Adicionar à|Instalar e/.test(it);
     retangulo(ctx, t2.x + 2, y, t2.w - 4, 30, 6, { larg: 1.4, fundo: chave ? '#ffe3ea' : '#f4f4f8' });
     texto(ctx, it, t2.x + 10, y + 15, INK, it.length > 20 ? 14 : 17, 'left');
   });
-  const iAlvo = itens.findIndex((it) => /Adicionar à/.test(it));
-  const nAlvo = ios ? 1 : 2;
-  retangulo(ctx, t2.x - 4, y0 + iAlvo * 34 - 4, t2.w + 8, nAlvo * 34 + 4, 10, { cor: RED, larg: 2.4 });
+  const iAlvo = itens.findIndex((it) => /Adicionar à|Instalar e/.test(it));
+  retangulo(ctx, t2.x - 4, y0 + iAlvo * 34 - 4, t2.w + 8, 38, 10, { cor: RED, larg: 2.4 });
   // em pé a nota 2 fica à esquerda: a seta chega pela borda esquerda, sem cruzar o celular
   alvos.push([emPe ? t2.x - 4 : t2.x + t2.w + 4, y0 + iAlvo * 34 + 14]);
 
