@@ -4,6 +4,8 @@
   "main": "src/index.js",
   "compatibility_date": "2026-09-01",
   "workers_dev": true,
+  // Workers Logs: motivo das recusas e erros (issue #27). Sem dados pessoais nos logs.
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
   "durable_objects": {
     "bindings": [{ "name": "SALAS", "class_name": "Sala" }]
   },

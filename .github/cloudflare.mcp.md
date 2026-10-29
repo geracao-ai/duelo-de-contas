@@ -77,7 +77,19 @@ Código:
 - `worker/src/regras.js`: máquina de estados da sala, pura (testada em `tests/sala.test.js`).
 - `worker/src/origem.js`: lista de `Origin` aceitos (pura, testada).
 
-Endpoints (`https://duelo-de-contas.danieldopulo.workers.dev`):
+**Como o jogo chega à sala (desde a issue #27):** o navegador conecta em
+`wss://duelo-de-contas.pages.dev/sala/ws?…`, no **mesmo endereço do site**. A Pages Function
+`functions/sala/[[path]].js` repassa ao Worker pelo **service binding `SALA`** (Pages → *Settings →
+Bindings*, configurado pela API em produção e em prévia, apontando para o Worker `duelo-de-contas`,
+ambiente `production`). Assim redes e filtros que bloqueiam `*.workers.dev` não impedem o duelo.
+O endereço `workers.dev` continua no ar (testes locais e `tools/online/smoke.mjs`).
+
+**Logs (Workers Logs):** ligados em `worker/wrangler.jsonc` (`observability.enabled`) e pela API
+com `redact_query_string: true` (o PIN não aparece no log). Cada recusa registra
+`{ recusa, status, origem, upgrade, caminho }`. Consultar pelo MCP:
+`POST /accounts/{account_id}/workers/observability/telemetry/query`.
+
+Endpoints do Worker (`https://duelo-de-contas.danieldopulo.workers.dev`, ou `/sala/…` no site):
 
 | Rota | O que faz |
 | --- | --- |

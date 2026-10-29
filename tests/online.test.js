@@ -150,6 +150,20 @@ test('servidor: padrão e ?servidor=, convertido para ws(s)', () => {
   // em produção, um link não troca o servidor
   assert.equal(servidorDaUrl('?servidor=https://evil.example', 'duelo-de-contas.pages.dev'), SERVIDOR_PADRAO);
   assert.equal(servidorDaUrl('?servidor=https://evil.example'), SERVIDOR_PADRAO);
+  // no site publicado a sala vai pelo próprio endereço (Pages Function /sala), não por *.workers.dev
+  assert.equal(
+    servidorDaUrl('', 'duelo-de-contas.pages.dev', 'https://duelo-de-contas.pages.dev'),
+    'https://duelo-de-contas.pages.dev/sala',
+  );
+  assert.equal(
+    wsUrl(servidorDaUrl('', 'duelo-de-contas.pages.dev', 'https://duelo-de-contas.pages.dev')),
+    'wss://duelo-de-contas.pages.dev/sala/ws?criar=1',
+  );
+  // ?servidor= continua sem efeito em produção, mesmo com a origem
+  assert.equal(
+    servidorDaUrl('?servidor=https://evil.example', 'duelo-de-contas.pages.dev', 'https://duelo-de-contas.pages.dev'),
+    'https://duelo-de-contas.pages.dev/sala',
+  );
   assert.equal(wsUrl('https://x.workers.dev'), 'wss://x.workers.dev/ws?criar=1');
   assert.equal(wsUrl('http://localhost:8787', { pin: '482913' }), 'ws://localhost:8787/ws?pin=482913');
 });
@@ -342,6 +356,8 @@ test('analytics online: modo, resultado e eventos de sala', () => {
   assert.equal(criada.op_divisao, true);
   assert.ok(!('modo' in criada));
   assert.deepEqual(salaErroProps('sala-cheia'), { codigo: 'sala-cheia' });
+  assert.deepEqual(salaErroProps('conexao', { fechamento: 1006, conectou: false }), { codigo: 'conexao', fechamento: 1006, conectou: false });
+  assert.deepEqual(salaErroProps('conexao', { fechamento: null }), { codigo: 'conexao' });
 });
 
 test('amigo que foi dormir: saiu com motivo dormir mostra o texto certo', () => {
