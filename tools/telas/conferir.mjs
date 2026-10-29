@@ -1,4 +1,4 @@
-// Confere as telas com prints: menu, aviso de girar e partidas (computador e 2 jogadores) nos tamanhos
+// Confere as telas com prints: menu, Ajuda, aviso de girar e partidas (computador e 2 jogadores) nos tamanhos
 // de sempre e no iPhone, com a câmera e a barra de início simuladas (safe areas). Falha se um botão,
 // conta ou resposta ficar fora da área visível, se o texto vazar de um botão ou se a tela rolar.
 //
@@ -57,7 +57,10 @@ async function conferir(page, nome, recortes) {
     const H = innerHeight;
     const { left = 0, right = 0, top = 0, bottom = 0 } = ins || {};
     const lista = [];
-    const alvos = '#screen-match button, #screen-match .display, #screen-menu button, #rotate-hint button, #btn-mute';
+    const alvos = [
+      '#screen-match button', '#screen-match .display', '#screen-menu button', '#rotate-hint button', '#btn-mute',
+      '#btn-help', '#screen-online button', '#screen-help button', '#screen-help-topic button', '#help-canvas',
+    ].join(', ');
     for (const el of document.querySelectorAll(alvos)) {
       const r = el.getBoundingClientRect();
       if (!r.width || el.closest('[hidden]') || getComputedStyle(el).visibility === 'hidden') continue;
@@ -88,6 +91,19 @@ for (const [nome, largura, altura, recortes] of TAMANHOS) {
   const emPe = altura > largura;
   let page = await abrir(largura, altura, recortes);
   await conferir(page, `${nome}-menu`, recortes);
+  await page.click('#btn-help');
+  await sleep(200);
+  await conferir(page, `${nome}-ajuda`, recortes);
+  for (const tema of ['amigo', 'iphone', 'android']) {
+    await page.click(`#help-list [data-tema="${tema}"]`);
+    await sleep(400); // a fonte de mão carrega e a ilustração é desenhada
+    await conferir(page, `${nome}-ajuda-${tema}`, recortes);
+    await page.click('#btn-help-topic-back');
+  }
+  await page.click('[data-action="help-back"]');
+  await page.click('[data-action="online"]');
+  await sleep(200);
+  await conferir(page, `${nome}-desafiar`, recortes);
   await page.context().close();
 
   for (const [modo, rotulo] of [['play-cpu', 'computador'], ['play-2p', '2p']]) {

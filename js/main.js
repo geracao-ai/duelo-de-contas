@@ -16,6 +16,10 @@ import {
 import { createRng } from './rng.js';
 import { criarSono, limitesDaUrl, SONO_KEY } from './sono.js';
 import {
+  sistemaDoAparelho, temasDaAjuda, temaValido, ajudaProps, PASSOS, TITULO_DO_TEMA,
+} from './ajuda.js';
+import { desenharAjuda } from './ajuda-desenho.js';
+import {
   conectar, wsUrl, servidorDaUrl, salaValida, pinDaUrl, conviteUrl, conviteTexto, erroTexto, codigoDeSaida,
   PROTOCOLO_VERSAO, PIN_TAMANHO,
 } from './online.js';
@@ -48,6 +52,7 @@ const app = {
   setupOnline: false, // a tela de configuração está no modo "criar sala"
   online: null, // sala online em andamento (ver "duelo online")
   joinPin: '', // dígitos do PIN na tela "Entrar com PIN"
+  ajuda: { tema: 'amigo', voltarPara: 'help' }, // tema aberto e a tela para onde o Voltar leva
 };
 
 // Hora de dormir: o tempo com o jogo visível fica guardado no aparelho (ver js/sono.js).
@@ -91,7 +96,8 @@ const isCpuMode = () => app.settings.mode === 'cpu';
 function showScreen(name) {
   app.screen = name;
   for (const section of $$('.screen')) section.hidden = section.id !== `screen-${name}`;
-  $('#btn-mute').hidden = name === 'match';
+  $('#btn-mute').hidden = name === 'match' || name === 'help-topic'; // na Ajuda o Som cobriria o cartão
+  $('#btn-help').hidden = name !== 'menu';
   if (name === 'menu' || name === 'sleep') {
     const [a, b] = [...ANIMAL_IDS].sort(() => Math.random() - 0.5);
     app.menuAnimals = [a, b];
@@ -101,6 +107,7 @@ function showScreen(name) {
   if (name === 'sleep') renderSleep();
   if (name === 'lobby') renderLobby();
   if (name === 'join') renderJoin();
+  if (name === 'help') renderHelp();
   renderer.resetScene(0);
   updateRotateHint();
   layout();
@@ -152,6 +159,7 @@ function computeSceneRect() {
 
 function layout() {
   $('#screen-match').classList.toggle('side', matchSideLayout());
+  if (app.screen === 'help-topic') desenharAjuda($('#help-canvas'), app.ajuda.tema);
   renderer.setSceneRect(computeSceneRect());
   if (app.screen === 'sleep') app.sleepCard = $('.sleep-card').getBoundingClientRect();
 }
@@ -838,6 +846,7 @@ function onKeyDown(event) {
   }
   if (event.ctrlKey || event.metaKey || event.altKey) return;
   if (app.screen === 'join') { onJoinKey(event); return; }
+  if (app.screen === 'help-topic' && event.key === 'Escape') { closeHelpTopic(); return; }
   if (app.screen !== 'match' || !app.match) return;
   if (event.key === 'Escape') {
     event.preventDefault();
@@ -1555,6 +1564,39 @@ function initSono() {
   }
 }
 
+// ---------- ajuda ----------
+
+function renderHelp() {
+  const sistema = sistemaDoAparelho(navigator.userAgent, { toques: navigator.maxTouchPoints || 0 });
+  $('#help-list').replaceChildren(...temasDaAjuda(sistema).map((tema) => {
+    const botao = make('button', `btn ${tema.cor}`, tema.titulo);
+    botao.type = 'button';
+    botao.dataset.tema = tema.id;
+    if (tema.destaque) botao.append(make('small', '', 'o seu celular'));
+    botao.addEventListener('click', () => openHelpTopic(tema.id, 'menu'));
+    return botao;
+  }));
+}
+
+/** Abre um tema da Ajuda. `origem`: 'menu' (pela página de Ajuda) ou 'desafiar' (tela "Desafiar um amigo"). */
+function openHelpTopic(tema, origem) {
+  if (!temaValido(tema)) return;
+  app.ajuda = { tema, voltarPara: origem === 'desafiar' ? 'online' : 'help' };
+  setText($('#help-topic-title'), TITULO_DO_TEMA[tema]);
+  $('#help-steps').replaceChildren(...PASSOS[tema].map((passo) => make('li', '', passo)));
+  track('ajuda_aberta', ajudaProps(tema, origem));
+  showScreen('help-topic'); // layout() desenha a ilustração no tamanho da tela
+  $('#btn-help-topic-back').focus();
+}
+
+function closeHelpTopic() {
+  showScreen(app.ajuda.voltarPara);
+  const alvo = app.ajuda.voltarPara === 'online'
+    ? $('#screen-online [data-action="help-amigo"]')
+    : $(`#help-list [data-tema="${app.ajuda.tema}"]`);
+  alvo?.focus();
+}
+
 // ---------- inicialização ----------
 
 function onAction(action) {
@@ -1566,6 +1608,10 @@ function onAction(action) {
     'play-cpu': () => { app.setupOnline = false; app.settings.mode = 'cpu'; persistSettings(); showScreen('setup'); },
     'play-2p': () => { app.setupOnline = false; app.settings.mode = '2p'; persistSettings(); showScreen('setup'); },
     stats: () => showScreen('stats'),
+    help: () => { showScreen('help'); $('#help-list .btn')?.focus(); },
+    'help-back': () => { showScreen('menu'); $('#btn-help').focus(); },
+    'help-amigo': () => openHelpTopic('amigo', 'desafiar'),
+    'help-topic-back': closeHelpTopic,
     menu: () => { leaveOnline(); app.setupOnline = false; app.match = null; showScreen('menu'); },
     online: () => { leaveOnline(); app.setupOnline = false; app.match = null; showScreen('online'); },
     'online-create': () => { leaveOnline(); app.setupOnline = true; showScreen('setup'); },
@@ -1616,6 +1662,7 @@ function init() {
     observer.observe($('.result-card'));
     observer.observe($('.sleep-card'));
     observer.observe($('.hud'));
+    observer.observe($('#help-canvas'));
   }
   renderMute();
   initAnalytics();

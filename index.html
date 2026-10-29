@@ -26,6 +26,7 @@
   <meta name="twitter:image:alt" content="Ursinho e Coelhinha brincando de cabo de guerra, com os sinais de mais, menos, vezes e dividir.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23ffd23f'/%3E%3Ctext x='50' y='66' font-size='54' text-anchor='middle' font-family='sans-serif' font-weight='900' fill='%233b2a20'%3E%2B%3C/text%3E%3C/svg%3E">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.webmanifest">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -33,6 +34,7 @@
   <div id="live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 
   <button id="btn-mute" class="btn btn-icon btn-mute" type="button" aria-label="Desligar o som" aria-pressed="false">Som</button>
+  <button id="btn-help" class="btn btn-yellow btn-help" type="button" data-action="help">Ajuda</button>
 
   <main id="app">
     <!-- Menu -->
@@ -46,6 +48,27 @@
         <button class="btn btn-yellow btn-xl" type="button" data-action="stats" aria-label="Ver estatísticas">Estatísticas</button>
       </div>
       <a class="privacy-link" href="termos.html">Privacidade e termos</a>
+    </section>
+
+    <!-- Ajuda: um botão por tema (ver js/ajuda.js) -->
+    <section id="screen-help" class="screen" aria-labelledby="help-title" hidden>
+      <div class="card help-card">
+        <h2 id="help-title">Ajuda</h2>
+        <div class="help-list" id="help-list"></div>
+        <button class="btn btn-gray" type="button" data-action="help-back" aria-label="Voltar ao menu">Voltar</button>
+      </div>
+    </section>
+
+    <!-- Tema da Ajuda: ilustração anotada (canvas) e os mesmos passos em texto para o leitor de tela -->
+    <section id="screen-help-topic" class="screen help-topic" aria-labelledby="help-topic-title" hidden>
+      <div class="card help-topic-card">
+        <div class="help-topic-top">
+          <button class="btn btn-gray btn-small" type="button" data-action="help-topic-back" id="btn-help-topic-back">Voltar</button>
+          <h2 id="help-topic-title"></h2>
+        </div>
+        <canvas id="help-canvas" aria-hidden="true"></canvas>
+        <ol class="sr-only" id="help-steps"></ol>
+      </div>
     </section>
 
     <!-- Configuração -->
@@ -103,10 +126,13 @@
     <section id="screen-online" class="screen" aria-labelledby="online-title" hidden>
       <div class="card online-card">
         <h2 id="online-title">Desafiar um amigo</h2>
-        <p class="hint">Cada um joga no seu aparelho, com as mesmas contas!</p>
+        <p class="hint">Um cria a sala e passa o PIN. O outro entra com esse PIN.</p>
         <button class="btn btn-green btn-xl" type="button" data-action="online-create" aria-label="Criar uma sala">Criar sala</button>
         <button class="btn btn-blue btn-xl" type="button" data-action="online-join" aria-label="Entrar numa sala com o PIN">Entrar com PIN</button>
-        <button class="btn btn-gray" type="button" data-action="menu" aria-label="Voltar ao menu">Voltar</button>
+        <div class="row online-row">
+          <button class="btn btn-gray" type="button" data-action="menu" aria-label="Voltar ao menu">Voltar</button>
+          <button class="btn btn-yellow" type="button" data-action="help-amigo" aria-label="Ajuda: como jogar com um amigo">Ajuda</button>
+        </div>
       </div>
     </section>
 
