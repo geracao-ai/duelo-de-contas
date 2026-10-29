@@ -16,6 +16,11 @@
   --p1: #d62839;
   --radius: 22px;
   --font: "Trebuchet MS", "Segoe UI", "Comic Sans MS", system-ui, sans-serif;
+  /* áreas cobertas pela câmera e pela barra de início (iPhone); 0 nos outros aparelhos */
+  --sa-t: env(safe-area-inset-top, 0px);
+  --sa-r: env(safe-area-inset-right, 0px);
+  --sa-b: env(safe-area-inset-bottom, 0px);
+  --sa-l: env(safe-area-inset-left, 0px);
 }
 
 * { box-sizing: border-box; }
@@ -35,7 +40,8 @@ html, body {
 }
 
 #stage { position: fixed; inset: 0; display: block; z-index: 0; }
-#app { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+/* o céu (canvas) vai até a borda; os botões e textos ficam fora da câmera e da barra de início */
+#app { position: fixed; inset: var(--sa-t) 0 0; z-index: 1; pointer-events: none; }
 
 .sr-only {
   position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
@@ -46,7 +52,7 @@ html, body {
 .screen {
   position: absolute; inset: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 16px; padding: 16px; overflow: auto;
+  gap: 16px; padding: 16px calc(16px + var(--sa-r)) calc(16px + var(--sa-b)) calc(16px + var(--sa-l)); overflow: auto;
   pointer-events: none;
 }
 .screen > *, .overlay > * { pointer-events: auto; }
@@ -90,7 +96,7 @@ html, body {
 .btn-lg { font-size: 1.4rem; min-height: 64px; padding-inline: 32px; }
 .btn-small { font-size: 1rem; padding: 8px 16px; }
 .btn-mute {
-  position: fixed; top: 10px; right: 10px; z-index: 10;
+  position: fixed; top: calc(10px + var(--sa-t)); right: calc(10px + var(--sa-r)); z-index: 10;
   --c: var(--gray); font-size: 0.95rem; padding: 8px 12px;
 }
 .btn[aria-pressed="true"].btn-mute, .btn[aria-pressed="true"]#btn-mute-hud { --c: var(--red); --cd: var(--red-dark); }
@@ -140,12 +146,12 @@ html, body {
   padding: 8px 12px 0; padding-right: 12px;
 }
 .hud-group { display: flex; gap: 8px; }
-.panels { display: flex; gap: 10px; padding: 0 8px; align-items: flex-end; }
+.panels { display: flex; gap: 10px; padding: 0 calc(8px + var(--sa-r)) 0 calc(8px + var(--sa-l)); align-items: flex-end; }
 .panel {
   flex: 1 1 0; min-width: 0; container-type: inline-size;
   background: rgba(255, 255, 255, 0.93); border: 4px solid var(--ink); border-bottom: 0;
   border-top: 8px solid var(--accent, var(--p0)); border-radius: 24px 24px 0 0;
-  padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 6px;
+  padding: 8px 12px calc(10px + var(--sa-b)); display: flex; flex-direction: column; gap: 6px;
 }
 .panel { position: relative; }
 .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 900; color: var(--accent); }
@@ -228,7 +234,8 @@ html, body {
 .choices { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; touch-action: none; user-select: none; -webkit-user-select: none; }
 .choice {
   font: inherit; font-weight: 900; font-size: clamp(1.8rem, 6vh, 2.6rem); color: var(--ink);
-  min-height: clamp(64px, 12vh, 104px); padding: 4px;
+  /* no iPhone em pé, cada fileira cede 1/4 da altura coberta pela câmera e pela barra (2 jogadores = 4 fileiras) */
+  min-height: clamp(64px, calc(12vh - (var(--sa-t) + var(--sa-b)) / 4), 104px); padding: 4px;
   border: 3px solid var(--ink); border-radius: 18px; cursor: pointer;
   box-shadow: 0 5px 0 rgba(43, 31, 58, 0.45);
   transition: opacity 0.2s, transform 0.1s;
@@ -254,9 +261,12 @@ html, body {
 .match.side .panels { position: absolute; inset: 0; padding: 0; pointer-events: none; justify-content: space-between; align-items: stretch; }
 .match.side .panel {
   flex: 0 0 clamp(220px, 31vw, 300px); pointer-events: auto; border: 0; border-top: 0;
-  border-left: 8px solid var(--accent); padding: 4px 8px; justify-content: center; border-radius: 0;
+  border-left: 8px solid var(--accent); padding: 4px 8px calc(4px + var(--sa-b)); justify-content: center; border-radius: 0;
 }
 .match.side .panel[data-side="0"] { border-left: 0; border-right: 8px solid var(--accent); }
+/* celular deitado com câmera na lateral: o painel cresce até a borda e o conteúdo fica fora da câmera */
+.match.side .panel[data-side="0"] { flex-basis: calc(clamp(220px, 31vw, 300px) + var(--sa-l)); padding-left: calc(8px + var(--sa-l)); }
+.match.side .panel[data-side="1"] { flex-basis: calc(clamp(220px, 31vw, 300px) + var(--sa-r)); padding-right: calc(8px + var(--sa-r)); }
 .match.side .panel .keypad { display: grid; grid-template-columns: repeat(3, 1fr); }
 .match.side .key { grid-column: auto !important; grid-row: auto !important; min-height: 56px; }
 .match.side .display { font-size: 1.9rem; padding: 2px 8px; }
@@ -302,13 +312,15 @@ html, body {
 /* ---------- diálogo e avisos ---------- */
 .overlay {
   position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
-  padding: 16px; background: rgba(43, 31, 58, 0.55);
+  padding: calc(16px + var(--sa-t)) calc(16px + var(--sa-r)) calc(16px + var(--sa-b)) calc(16px + var(--sa-l));
+  background: rgba(43, 31, 58, 0.55);
 }
 .dialog-card { width: min(440px, 100%); text-align: center; }
 .dialog-card p { margin: 0; font-weight: 700; font-size: 1.1rem; }
 .rotate-hint {
-  position: fixed; left: 50%; top: 72px; transform: translateX(-50%); z-index: 15;
-  display: flex; align-items: center; gap: 12px; padding: 10px 14px; max-width: calc(100vw - 32px);
+  position: fixed; left: 50%; top: calc(72px + var(--sa-t)); transform: translateX(-50%); z-index: 15;
+  /* largura do conteúdo: com left: 50% a largura automática ficaria presa à metade da tela (issue #29) */
+  display: flex; align-items: center; gap: 12px; padding: 10px 14px; width: max-content; max-width: calc(100vw - 32px);
   background: #fff3b0; border: 3px solid var(--ink); border-radius: 20px; font-weight: 800;
 }
 .phone-icon {
@@ -339,10 +351,13 @@ html, body {
   .panel { flex: none; }
   .panel.is-cpu { order: -1; }
   .panel.is-cpu .cpu-note { display: none; }
+  /* empilhados: só o painel de baixo encosta na barra de início */
+  .panel { padding-bottom: 10px; }
+  .panel:last-child:not(.is-cpu), .panel:not(.is-cpu):has(+ .is-cpu) { padding-bottom: calc(10px + var(--sa-b)); }
   .display { font-size: 2rem; }
 }
 
-.rotate-hint .btn { white-space: nowrap; min-height: 48px; padding: 6px 14px; }
+.rotate-hint .btn { flex: none; white-space: nowrap; min-height: 48px; padding: 6px 14px; }
 
 /* ---------- privacidade e termos ---------- */
 .privacy-link {
@@ -399,7 +414,7 @@ html:has(body.legal) { overflow: auto; height: auto; }
 .match.online .panels { justify-content: center; }
 .match.online .panel { flex: 0 1 min(780px, 100%); }
 .friend-tag {
-  position: absolute; top: 72px; right: 8px; z-index: 2; display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+  position: absolute; top: 72px; right: calc(8px + var(--sa-r)); z-index: 2; display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
   padding: 6px 14px; background: rgba(255, 255, 255, 0.93); border: 3px solid var(--ink);
   border-right: 8px solid var(--accent); border-radius: 18px; font-weight: 900; color: var(--accent);
   pointer-events: none;
@@ -410,12 +425,12 @@ html:has(body.legal) { overflow: auto; height: auto; }
 .friend-status.bad { color: var(--red); }
 .friend-tag.shake { animation: shake 0.4s; }
 .match.side.online .panels { justify-content: flex-start; }
-.match.side.online .panel { flex: 0 0 clamp(300px, 46vw, 440px); }
+.match.side.online .panel { flex: 0 0 calc(clamp(300px, 46vw, 440px) + var(--sa-l)); }
 .match.side.online .panel-animal, .match.side.online .panel-score { display: inline; }
 .match.side.online .keypad { grid-template-columns: repeat(6, 1fr); }
 .match.side.online .key { min-height: 52px; font-size: 1.3rem; }
 .match.side.online .key-erase { font-size: 0.85rem; }
-.match.side.online .hud { left: calc(clamp(300px, 46vw, 440px) + 70px); transform: none; }
+.match.side.online .hud { left: calc(clamp(300px, 46vw, 440px) + var(--sa-l) + 70px); transform: none; }
 
 @media (max-height: 520px) and (min-width: 600px) {
   #screen-menu { padding-top: 8px; gap: 8px; }
@@ -423,6 +438,12 @@ html:has(body.legal) { overflow: auto; height: auto; }
   #screen-menu .btn-xl { min-height: 56px; }
   .pin-digit { height: 52px; }
   .lobby-slot canvas { width: 96px; height: 96px; }
+}
+/* Safari deitado (barra de endereço visível): ~330 px de altura */
+@media (max-height: 360px) and (min-width: 600px) {
+  #screen-menu { gap: 4px; }
+  #screen-menu .logo { font-size: 3.6rem; }
+  #screen-menu .tagline { font-size: 1.1rem; padding-block: 2px; }
 }
 .lobby-body { display: flex; flex-direction: column; gap: 12px; }
 .lobby-left, .lobby-right { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
@@ -450,7 +471,7 @@ html:has(body.legal) { overflow: auto; height: auto; }
 
 /* ---------- hora de dormir ---------- */
 .toast {
-  position: fixed; left: 50%; top: 10px; transform: translateX(-50%); z-index: 12;
+  position: fixed; left: 50%; top: calc(10px + var(--sa-t)); transform: translateX(-50%); z-index: 12;
   width: max-content; max-width: min(calc(100vw - 150px), 460px); padding: 10px 18px;
   text-align: center; font-weight: 900; font-size: clamp(0.95rem, 2.6vw, 1.2rem);
   color: #eef2ff; background: #14214f; border: 3px solid var(--ink); border-radius: 20px;
@@ -459,10 +480,10 @@ html:has(body.legal) { overflow: auto; height: auto; }
 }
 @keyframes toast-in { from { opacity: 0; } }
 /* celular em pé: abaixo dos botões do alto (Pausa, Som, Sair) */
-@media (max-aspect-ratio: 11/10) { .toast { top: 68px; max-width: calc(100vw - 32px); padding: 8px 14px; } }
+@media (max-aspect-ratio: 11/10) { .toast { top: calc(68px + var(--sa-t)); max-width: calc(100vw - 32px); padding: 8px 14px; } }
 /* celular deitado, em partida: na faixa do meio, entre os dois painéis, sem cobrir as contas */
 body:has(#screen-match.side:not([hidden])) .toast {
-  top: 62px; width: 300px; max-width: 34vw; padding: 6px 10px; font-size: 0.9rem;
+  top: calc(62px + var(--sa-t)); width: 300px; max-width: 34vw; padding: 6px 10px; font-size: 0.9rem;
 }
 
 .sleep-card {
