@@ -238,5 +238,13 @@ export function salaCriadaProps(settings) {
   return props;
 }
 
-/** Propriedades de `sala_erro`: só o código do erro (ou `conexao`). */
-export const salaErroProps = (codigo) => ({ codigo: String(codigo) });
+/**
+ * Propriedades de `sala_erro`: o código do erro (ou `conexao`) e, quando a conexão cai, o código de
+ * fechamento do WebSocket e se chegou a conectar — números e booleanos para diagnóstico, nada pessoal.
+ */
+export function salaErroProps(codigo, { fechamento = null, conectou = null } = {}) {
+  const props = { codigo: String(codigo) };
+  if (Number.isInteger(fechamento)) props.fechamento = fechamento;
+  if (typeof conectou === 'boolean') props.conectou = conectou;
+  return props;
+}

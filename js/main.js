@@ -914,7 +914,9 @@ function frame(now) {
 // Lado local: "você" é sempre o lado 0 (esquerda, azul) nos dois aparelhos. O servidor numera
 // os lados pelo papel na sala (0 = anfitrião, 1 = convidado), então o convidado inverte a corda.
 
-const serverBase = () => servidorDaUrl(globalThis.location?.search ?? '', globalThis.location?.hostname ?? '');
+const serverBase = () => servidorDaUrl(
+  globalThis.location?.search ?? '', globalThis.location?.hostname ?? '', globalThis.location?.origin ?? '',
+);
 
 function sendOnline(type, fields) {
   app.online?.conn?.enviar(type, fields);
@@ -939,8 +941,8 @@ function openRoomConnection(role, { pin = null, inicial }) {
     url: wsUrl(serverBase(), { pin }),
     inicial: { t: inicial.t, campos: { v: PROTOCOLO_VERSAO, ...inicial.campos } },
     onMensagem: (msg) => { if (current()) onServerMessage(msg); },
-    onFalha: () => { if (current()) onConnectionLost(); },
-    onFechou: () => { if (current()) onConnectionLost(); },
+    onFalha: (info) => { if (current()) onConnectionLost({ ...info, conectou: false }); },
+    onFechou: (info) => { if (current()) onConnectionLost({ ...info, conectou: true }); },
   });
   return o;
 }
@@ -964,8 +966,8 @@ function joinRoom() {
 }
 
 /** Mostra o erro com o diálogo de sempre e volta ao menu online. */
-async function showOnlineError(codigo, { report = true } = {}) {
-  if (report) track('sala_erro', salaErroProps(codigo));
+async function showOnlineError(codigo, { report = true, detalhe = {} } = {}) {
+  if (report) track('sala_erro', salaErroProps(codigo, detalhe));
   if (app.match && !app.match.reported && app.match.game.state !== 'over') trackAbandon();
   leaveOnline();
   app.dialog?.cancel();
@@ -979,13 +981,13 @@ async function showOnlineError(codigo, { report = true } = {}) {
   });
 }
 
-function onConnectionLost() {
+function onConnectionLost(info = {}) {
   const o = app.online;
   if (o?.friendLeft) { // a sala fechou porque o amigo saiu: sem alarde
     if (app.screen === 'result') renderResultButtons();
     return;
   }
-  showOnlineError('conexao');
+  showOnlineError('conexao', { detalhe: info });
 }
 
 function onServerMessage(msg) {

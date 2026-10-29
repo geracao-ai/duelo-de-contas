@@ -4,6 +4,18 @@ import { origemPermitida } from './origem.js';
 import { tratar, sair, alarme, podeEntrar, proximoAlarme, OCIOSA_MS } from './regras.js';
 
 const PIN_RE = /^[1-9]\d{5}$/;
+
+// Recusa com motivo no log (Workers Logs). Só dados técnicos: nada da criança, nem o PIN.
+function recusa(status, texto, motivo, request) {
+  console.warn(JSON.stringify({
+    recusa: motivo,
+    status,
+    origem: request.headers.get('Origin') ?? null,
+    upgrade: request.headers.get('Upgrade') ?? null,
+    caminho: new URL(request.url).pathname,
+  }));
+  return new Response(texto, { status });
+}
 const MAX_TENTATIVAS = 8;
 
 function sorteiaPin() {
@@ -16,13 +28,13 @@ export default {
     if (url.pathname === '/saude') {
       return new Response('ok', { headers: { 'content-type': 'text/plain; charset=utf-8' } });
     }
-    if (url.pathname !== '/ws') return new Response('Não encontrado', { status: 404 });
+    if (url.pathname !== '/ws') return recusa(404, 'Não encontrado', 'caminho', request);
 
     if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') {
-      return new Response('Use WebSocket', { status: 426 });
+      return recusa(426, 'Use WebSocket', 'sem-upgrade', request);
     }
     if (!origemPermitida(request.headers.get('Origin'))) {
-      return new Response('Origem não permitida', { status: 403 });
+      return recusa(403, 'Origem não permitida', 'origem', request);
     }
 
     // Repassa o handshake ao Durable Object do PIN, dizendo o papel por cabeçalho interno.
@@ -39,12 +51,12 @@ export default {
         const resp = await encaminha(sorteiaPin(), 'criar');
         if (resp.status !== 409) return resp;
       }
-      return new Response('Sem salas livres agora', { status: 503 });
+      return recusa(503, 'Sem salas livres agora', 'sem-pin-livre', request);
     }
 
     const pin = url.searchParams.get('pin');
     if (pin && PIN_RE.test(pin)) return encaminha(pin, 'entrar');
-    return new Response('PIN inválido', { status: 400 });
+    return recusa(400, 'PIN inválido', 'pin-invalido', request);
   },
 };
 

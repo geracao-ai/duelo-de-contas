@@ -26,11 +26,15 @@ export const ERRO_TEXTOS = {
 export const erroTexto = (codigo) => ERRO_TEXTOS[codigo] ?? ERRO_TEXTOS.conexao;
 
 /**
- * Servidor a usar: o padrão, ou `?servidor=http://localhost:8787` — só quando a própria página
- * está em localhost (testes). Em produção um link não pode mandar a criança para outro servidor.
+ * Servidor a usar. No site publicado: o próprio endereço do site + `/sala` (Pages Function que
+ * repassa ao Worker), assim redes que bloqueiam *.workers.dev não atrapalham (issue #27).
+ * Em localhost: `?servidor=http://localhost:8787` para testes, senão o Worker direto.
+ * Em produção um link não pode mandar a criança para outro servidor.
  */
-export function servidorDaUrl(search = '', hostname = '') {
-  if (!/^(localhost|127\.0\.0\.1)$/.test(hostname)) return SERVIDOR_PADRAO;
+export function servidorDaUrl(search = '', hostname = '', origem = '') {
+  if (!/^(localhost|127\.0\.0\.1)$/.test(hostname)) {
+    return /^https:\/\/[^\s/]+$/.test(origem) ? `${origem}/sala` : SERVIDOR_PADRAO;
+  }
   const valor = new URLSearchParams(search).get('servidor');
   return valor && /^https?:\/\/[^\s/]+/.test(valor) ? valor.replace(/\/+$/, '') : SERVIDOR_PADRAO;
 }
@@ -72,7 +76,8 @@ export const conviteTexto = (pin) => `Vem me desafiar no Duelo de Contas! PIN ${
 
 /**
  * Abre a conexão. `inicial` ({ t, campos }) é a 1ª mensagem (criar/entrar), enviada ao conectar.
- * Callbacks: onMensagem(msg), onFalha() (não conseguiu conectar), onFechou() (caiu depois de conectar).
+ * Callbacks: onMensagem(msg), onFalha(info) (não conseguiu conectar), onFechou(info) (caiu depois de conectar).
+ * `info.fechamento`: código de fechamento do WebSocket (1006 = a rede derrubou), só para diagnóstico.
  * Fechar pelo `fechar()` não dispara callback nenhum.
  * @returns {{ enviar: (t: string, campos?: object) => boolean, fechar: () => void, aberta: () => boolean }}
  */
@@ -100,18 +105,19 @@ export function conectar({
       return false;
     }
   };
-  const terminou = () => {
+  const terminou = (evento) => {
     parar();
     if (encerrado) return;
     encerrado = true;
-    (conectou ? onFechou : onFalha)();
+    const fechamento = typeof evento?.code === 'number' ? evento.code : null;
+    (conectou ? onFechou : onFalha)({ fechamento });
   };
 
   try {
     socket = new WebSocketCtor(url);
   } catch {
     encerrado = true;
-    queueMicrotask(onFalha);
+    queueMicrotask(() => onFalha({ fechamento: null }));
     return { enviar: () => false, fechar: () => {}, aberta: () => false };
   }
   socket.onopen = () => {
