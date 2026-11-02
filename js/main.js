@@ -220,7 +220,7 @@ const pauseGame = () => {
 const quitGame = () => {
   if (app.match?.remote) return quitOnline();
   return openPauseMenu({
-    title: 'Sair da partida?', text: 'Você vai perder o progresso desta partida.', resumeLabel: 'Continuar jogando', quitLabel: 'Sim, sair',
+    title: 'Sair da partida?', text: 'Esta partida vai acabar e não vai contar.', resumeLabel: 'Continuar jogando', quitLabel: 'Sim, sair',
   });
 };
 
@@ -288,7 +288,7 @@ const usesChoices = (difficulty) => difficulty === 'facil';
 const DIFF_HINTS = {
   facil: 'Fácil: toque na resposta certa entre 4 opções.',
   medio: 'Médio: digite a resposta no teclado.',
-  dificil: 'Difícil: digite a resposta no teclado, com números maiores.',
+  dificil: 'Difícil: números maiores, e você digita a resposta.',
 };
 
 function renderSetup() {
@@ -676,9 +676,9 @@ function showResult() {
   let title;
   if (m.remote) {
     if (winner === null) title = erroTexto(codigoAmigoSaiu());
-    else title = winner === 0 ? 'Você venceu! Parabéns!' : 'Seu amigo venceu desta vez!';
+    else title = winner === 0 ? 'Você venceu! Parabéns!' : 'Seu amigo venceu desta vez! Vamos de novo?';
   } else if (m.cpuMode) {
-    title = winner === 0 ? 'Você venceu! Parabéns!' : 'O computador venceu desta vez!';
+    title = winner === 0 ? 'Você venceu! Parabéns!' : 'O computador venceu desta vez! Vamos de novo?';
   } else {
     title = `${info[winner].tag} venceu! Parabéns!`;
   }
@@ -761,7 +761,7 @@ function renderStats() {
     tile(String(st.winsVsCpu), 'Vitórias contra o computador'),
     tile(String(st.bestStreak), 'Melhor sequência de acertos'),
     tile(formatSeconds(stats.averageTime(st)), 'Tempo médio de resposta'),
-    tile(String(st.glasses.correct + st.glasses.wrong), 'Respostas de óculos'),
+    tile(String(st.glasses.correct + st.glasses.wrong), 'Respostas com os óculos'),
   );
   const rows = OPERATIONS.map((op) => {
     const { correct, wrong } = st.byOp[op];
@@ -1055,7 +1055,7 @@ function onSala(msg) {
   const host = msg.jogadores[0];
   if (first && host && o.myAnimal === host.bichinho) chooseGuestAnimal(otherAnimal(host.bichinho));
   renderJoin();
-  if (first) announce('Você entrou na sala! Escolha seu bichinho e toque em Estou pronto.');
+  if (first) announce('Você entrou na sala! Escolha seu bichinho e toque em Já escolhi.');
 }
 
 function onServerError(msg) {
@@ -1453,7 +1453,7 @@ async function quitOnline() {
   if (!m?.remote || app.screen !== 'match' || m.game.state === 'over' || app.dialog) return;
   const choice = await showDialog({
     title: 'Sair da partida?',
-    text: 'Seu amigo vai ficar sem adversário.',
+    text: 'Seu amigo vai ficar jogando sozinho.',
     buttons: [
       { label: 'Continuar jogando', value: 'resume', className: 'btn-green' },
       { label: 'Sim, sair', value: 'quit', className: 'btn-red' },

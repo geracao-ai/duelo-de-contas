@@ -105,7 +105,7 @@ function cenaAmigo(ctx, W, H, emPe) {
   const B = celular(ctx, ...L.B);
   botao(ctx, B.x + 8, B.y + 40, B.w - 16, 34, 'Entrar com PIN', '#1a5fd0', true);
   pin(ctx, B.x + 4, B.y + 100, '482913', emPe ? 17 : 18);
-  botao(ctx, B.x + 8, B.y + 200, B.w - 16, 30, 'Estou pronto!', '#148040');
+  botao(ctx, B.x + 8, B.y + 200, B.w - 16, 30, 'Já escolhi!', '#148040');
   const pinA = [A.x + A.w + 4, A.y + 122];
   const pinB = [B.x - 4, B.y + 112];
 

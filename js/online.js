@@ -12,15 +12,15 @@ export const PIN_TAMANHO = 6;
 
 /** Textos para crianças, por código de erro (os do servidor mais `conexao` e `saiu`). */
 export const ERRO_TEXTOS = {
-  'sala-inexistente': 'Não achamos essa sala. Confere o número com seu amigo?',
-  'sala-cheia': 'Essa sala já está cheia!',
-  versao: 'Atualize a página para jogar junto',
+  'sala-inexistente': 'Não achamos essa sala. Confira o número com seu amigo.',
+  'sala-cheia': 'Essa sala já tem dois jogadores. Peça um PIN novo ao seu amigo.',
+  versao: 'Seu jogo está antigo. Feche e abra o jogo de novo para jogarem juntos.',
   conexao: 'Não deu para conectar. Confira a internet e tente de novo.',
   saiu: 'Seu amigo saiu da sala.',
   dormiu: 'Seu amigo foi dormir.',
   'bichinho-igual': 'Esse bichinho já foi escolhido pelo seu amigo. Escolha outro!',
-  'mensagem-invalida': 'Algo deu errado. Vamos tentar de novo.',
-  ociosa: 'A sala fechou porque ficou parada muito tempo.',
+  'mensagem-invalida': 'Algo deu errado. Toque em Entendi e tente de novo.',
+  ociosa: 'A sala fechou porque ficou muito tempo sem jogo. Crie outra!',
 };
 
 export const erroTexto = (codigo) => ERRO_TEXTOS[codigo] ?? ERRO_TEXTOS.conexao;

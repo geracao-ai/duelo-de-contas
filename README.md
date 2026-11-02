@@ -49,7 +49,7 @@ A subtração nunca dá resultado negativo, a divisão é sempre exata e a mesma
 **Desafiar um amigo** leva duas pessoas, cada uma no seu aparelho, ao mesmo cabo de guerra:
 
 1. Quem cria a sala toca em **Criar sala**, escolhe operações, nível e bichinho, e recebe um **PIN de 6 números** (e o botão **Enviar convite**, que compartilha o link `?pin=482913` ou o copia).
-2. O amigo abre o link (o PIN já vem preenchido) ou toca em **Entrar com PIN**, escolhe um bichinho diferente do primeiro e toca em **Estou pronto!**.
+2. O amigo abre o link (o PIN já vem preenchido) ou toca em **Entrar com PIN**, escolhe um bichinho diferente do primeiro e toca em **Já escolhi!**.
 3. Quem criou toca em **Começar!**. Os dois recebem **as mesmas contas, na mesma ordem** (cada aparelho gera as contas com uma semente enviada pelo servidor, `js/rng.js`), e cada um vê só o próprio teclado. O servidor é quem move a corda e declara o vencedor. Não há pausa online. No fim, **Revanche** recomeça na mesma sala.
 
 O servidor é um Worker da Cloudflare (pasta `worker/`); o protocolo WebSocket está descrito na issue #18. O endereço padrão fica em `js/online.js` e pode ser trocado com `?servidor=http://localhost:8787` na URL do jogo. Para testar sem o Worker há um servidor falso e um teste com dois navegadores:
