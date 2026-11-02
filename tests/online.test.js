@@ -179,12 +179,12 @@ test('pin na URL e link de convite usam a origem atual', () => {
 });
 
 test('textos de erro para crianças', () => {
-  assert.equal(erroTexto('sala-inexistente'), 'Não achamos essa sala. Confere o número com seu amigo?');
-  assert.equal(erroTexto('sala-cheia'), 'Essa sala já está cheia!');
-  assert.equal(erroTexto('versao'), 'Atualize a página para jogar junto');
+  assert.equal(erroTexto('sala-inexistente'), 'Não achamos essa sala. Confira o número com seu amigo.');
+  assert.equal(erroTexto('sala-cheia'), 'Essa sala já tem dois jogadores. Peça um PIN novo ao seu amigo.');
+  assert.equal(erroTexto('versao'), 'Seu jogo está antigo. Feche e abra o jogo de novo para jogarem juntos.');
   assert.equal(erroTexto('conexao'), 'Não deu para conectar. Confira a internet e tente de novo.');
   assert.equal(erroTexto('saiu'), 'Seu amigo saiu da sala.');
-  assert.equal(erroTexto('ociosa'), 'A sala fechou porque ficou parada muito tempo.');
+  assert.equal(erroTexto('ociosa'), 'A sala fechou porque ficou muito tempo sem jogo. Crie outra!');
   assert.equal(erroTexto('qualquer-coisa'), erroTexto('conexao'));
 });
 

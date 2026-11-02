@@ -113,7 +113,7 @@
           <h3 id="lbl-p2">Jogador 2: escolha seu bichinho</h3>
           <div class="cards" id="cards-p2" role="group" aria-labelledby="lbl-p2"></div>
         </div>
-        <p class="hint" id="cpu-hint">O computador escolhe um bichinho diferente do seu, sorteado na hora.</p>
+        <p class="hint" id="cpu-hint">O computador vai jogar com outro bichinho, escolhido na sorte.</p>
 
         <div class="row">
           <button class="btn btn-gray" type="button" id="btn-setup-back" data-action="menu" aria-label="Voltar ao menu">Voltar</button>
@@ -126,7 +126,7 @@
     <section id="screen-online" class="screen" aria-labelledby="online-title" hidden>
       <div class="card online-card">
         <h2 id="online-title">Desafiar um amigo</h2>
-        <p class="hint">Um cria a sala e passa o PIN. O outro entra com esse PIN.</p>
+        <p class="hint">Um cria a sala e ganha um número (o PIN). O outro digita esse número para entrar.</p>
         <button class="btn btn-green btn-xl" type="button" data-action="online-create" aria-label="Criar uma sala">Criar sala</button>
         <button class="btn btn-blue btn-xl" type="button" data-action="online-join" aria-label="Entrar numa sala com o PIN">Entrar com PIN</button>
         <div class="row online-row">
@@ -185,7 +185,7 @@
           <p class="hint" id="join-wait" role="status" aria-live="polite" hidden>Esperando seu amigo começar…</p>
           <div class="row">
             <button class="btn btn-gray" type="button" data-action="online-leave" aria-label="Sair da sala">Sair</button>
-            <button class="btn btn-green btn-lg" type="button" id="btn-ready" data-action="online-ready" aria-label="Estou pronto">Estou pronto!</button>
+            <button class="btn btn-green btn-lg" type="button" id="btn-ready" data-action="online-ready" aria-label="Já escolhi meu bichinho">Já escolhi!</button>
           </div>
         </div>
         <p class="hint" id="join-status" role="status" aria-live="polite" hidden></p>

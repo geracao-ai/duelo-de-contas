@@ -39,7 +39,7 @@ O resto já lê a lista sozinho: cartões da escolha, sorteio do computador, val
 ## 4. Trocar ou remover um bichinho
 
 - **Configuração salva no aparelho:** `stats.loadSettings` ignora um id que não existe mais e volta para o padrão (Ursinho). Mesmo assim, teste com um `localStorage` que tenha o bichinho removido.
-- **Duelo online:** publique o servidor e o site juntos. Quem estiver com o jogo antigo aberto vê "Atualize a página" se o amigo escolher o bichinho novo.
+- **Duelo online:** publique o servidor e o site juntos. Quem estiver com o jogo antigo aberto vê "Seu jogo está antigo…" se o amigo escolher o bichinho novo.
 - **PostHog:** o gráfico "Bichinhos escolhidos" mistura o histórico do antigo com o novo. Anote a data da troca no painel (anotação) e na seção 4 do `.github/posthog.mcp.md`.
 
 ## 5. Testar e entregar
