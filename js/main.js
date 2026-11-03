@@ -166,6 +166,12 @@ function layout() {
 
 // ---------- diálogos ----------
 
+// Atrás do diálogo nada recebe foco nem leitor de tela (aria-modal sozinho não prende o Tab).
+const FUNDO_DO_DIALOGO = ['#app', '#btn-mute', '#rotate-hint'];
+function travarFundo(travar) {
+  FUNDO_DO_DIALOGO.forEach((seletor) => { const el = $(seletor); if (el) el.inert = travar; });
+}
+
 function showDialog({ title, text, buttons }) {
   return new Promise((resolve) => {
     const previousFocus = document.activeElement;
@@ -176,6 +182,7 @@ function showDialog({ title, text, buttons }) {
     const close = (value) => {
       $('#dialog').hidden = true;
       app.dialog = null;
+      travarFundo(false); // antes de devolver o foco: elemento travado não aceita foco
       previousFocus?.focus?.();
       resolve(value);
     };
@@ -187,6 +194,7 @@ function showDialog({ title, text, buttons }) {
       box.appendChild(button);
     });
     app.dialog = { cancel: () => close(buttons[0].value) };
+    travarFundo(true);
     $('#dialog').hidden = false;
     box.firstElementChild.focus();
   });
