@@ -44,7 +44,9 @@ Papel de cada projeto:
 | Preview deployments | ligadas (cada PR ganha um link) |
 
 O `npm run build` (`scripts/build.mjs`) copia só os arquivos públicos (`index.html`,
-`termos.html`, `css/`, `js/`, `assets/`) para `dist/`. A pasta `functions/` na raiz é publicada
+`termos.html`, `404.html`, `manifest.webmanifest`, `css/`, `js/`, `assets/`) para `dist/`. Com o `404.html` na raiz,
+o Pages responde **404** a endereços que não existem (em vez de abrir o jogo), e robôs que testam
+endereços inventados não viram visitas no PostHog. A pasta `functions/` na raiz é publicada
 automaticamente pelo Pages: `functions/e/[[path]].js` repassa `/e/*` para o PostHog EUA
 (`/e/static/*` → `us-assets.i.posthog.com`, o resto → `us.i.posthog.com`), sem cookies e
 encaminhando o IP do visitante (`CF-Connecting-IP` → `X-Forwarded-For`) só para o PostHog

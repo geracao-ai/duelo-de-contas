@@ -14,7 +14,7 @@ test('build copia o jogo e deixa de fora testes, ferramentas e funções', () =>
     build(saida);
     for (const f of [
       'index.html', 'css/style.css', 'js/game.js', 'assets/og-image.png', 'apple-touch-icon.png',
-      'manifest.webmanifest', 'assets/icone-192.png', 'assets/icone-512.png', 'assets/fontes/patrick-hand.woff2',
+      'manifest.webmanifest', 'assets/icone-192.png', 'assets/icone-512.png', 'assets/fontes/patrick-hand.woff2', '404.html',
     ]) {
       assert.ok(existsSync(join(saida, f)), `deveria existir: ${f}`);
     }

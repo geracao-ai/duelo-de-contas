@@ -1,0 +1,35 @@
+<!doctype html>
+<!-- Endereço que não existe: o Cloudflare Pages devolve esta página com status 404 (em vez de abrir o jogo),
+     assim robôs que testam endereços inventados não viram "visitas" nas estatísticas. Sem PostHog aqui. -->
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#4aa8ff">
+  <meta name="robots" content="noindex">
+  <title>Página não encontrada — Duelo de Contas</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23ffd23f'/%3E%3Ctext x='50' y='66' font-size='54' text-anchor='middle' font-family='sans-serif' font-weight='900' fill='%233b2a20'%3E%2B%3C/text%3E%3C/svg%3E">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    body { background: linear-gradient(#4aa8ff, #bfe9ff 70%, #5cbf4a 70%); }
+    .nao-achei {
+      min-height: 100%; display: flex; align-items: center; justify-content: center;
+      padding: calc(16px + var(--sa-t)) calc(16px + var(--sa-r)) calc(16px + var(--sa-b)) calc(16px + var(--sa-l));
+    }
+    .nao-achei .card { width: min(440px, 100%); display: flex; flex-direction: column; gap: 14px; text-align: center; }
+    .nao-achei h1 { margin: 0; font-size: clamp(1.5rem, 5vw, 2.2rem); }
+    .nao-achei p { margin: 0; font-weight: 700; font-size: 1.1rem; color: var(--ink-soft); }
+    .nao-achei .btn { display: flex; align-items: center; justify-content: center; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <main class="nao-achei">
+    <div class="card">
+      <h1>Ops! Essa página não existe.</h1>
+      <p>Os bichinhos estão esperando você no jogo.</p>
+      <a class="btn btn-green btn-xl" href="/">Ir para o jogo</a>
+    </div>
+  </main>
+</body>
+</html>
